@@ -1,0 +1,10 @@
+# Ignore python cache files
+__pycache__/
+*.pyc
+
+# Ignore the huge images (IMPORTANT)
+input_images/*
+output_images/*
+
+# Keep the gitkeep files so folders are tracked (optional trick)
+!input_images/.gitkeep
