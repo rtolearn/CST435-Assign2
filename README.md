@@ -56,5 +56,5 @@ CST435-Assignment2-Group/
 
 
 ### This has to be done manually as importing the whole dataset into git is not recommended (currently we are using chicken curry)
-├── input_images/        # Dataset: Subset of Food-101 for testing [cite: 20-21]
-│   ├── class_subset/   
+├── input_images/        
+├── class_subset/   (put the folder of your dataset here)
