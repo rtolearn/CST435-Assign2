@@ -53,3 +53,8 @@ CST435-Assignment2-Group/
     ├── charts/                    # Generated Matplotlib comparison graphs
     ├── performance_analysis.md    # Discussion of scalability and bottlenecks
     └── generate_charts.py         # Script to visualize the results
+
+
+### This has to be done manually as importing the whole dataset into git is not recommended (currently we are using chicken curry)
+├── input_images/        # Dataset: Subset of Food-101 for testing [cite: 20-21]
+│   ├── class_subset/   
