@@ -1,28 +1,55 @@
-File Architecture: 
+# CST435 Assignment 2: Parallel Image Processing System
+
+**Course:** CST435: Parallel and Cloud Computing
+**Assignment:** Assignment 2 - Parallel Image Processing on GCP
+
+---
+
+## 🚀 Quick Start & Run Commands
+
+### 1. Prerequisites
+Ensure you have Python installed. It is recommended to run these commands from the **root directory** of the project (`CST435-Assignment2-Group/`).
+
+### 2. Installation
+Install the required dependencies (OpenCV, NumPy, Matplotlib) using the provided requirements file:
+```bash
+pip install -r requirements.txt
+```
+### 3. Run first methodology
+cd Method_1_Multiprocessing
+python main.py
+
+### 4. Run second methodology
+cd Method_2_ConcurrentFutures
+python main.py
+
+### 5. Run second methodology
+cd ../Analysis
+python generate_charts.py
+
+
 CST435-Assignment2-Group/
 │
 ├── README.md                      # Critical: Project description & instructions for the grader [cite: 50]
-├── requirements.txt               # List dependencies (opencv-python, numpy, etc.) for GCP setup
-├── .gitignore                     # Ignore input_images/ (if large), output_images/, __pycache__/
+├── requirements.txt               # Dependencies (opencv-python-headless, numpy, matplotlib)
+├── .gitignore                     # Ignores large input_images/, output_images/, and __pycache__
 │
-├── input_images/                  # Your "manageable subset" of Food-101 for testing [cite: 21]
-│   ├── class_subset/              # e.g., 50-100 images for testing
-│   └── README.txt                 # Explain where these images came from
+├── input_images/                  # Dataset: Subset of Food-101 for testing [cite: 20-21]
+│   ├── class_subset/              # Contains the source .jpg images
+│   └── README.txt                 # Data source attribution
 │
-├── Method_1_Multiprocessing/      # Paradigm 1: Python Multiprocessing [cite: 39]
-│   ├── main.py                    # Entry point: Loads images -> distributes work -> saves results
-│   ├── filters.py                 # The 5 filter functions (Gray, Blur, Sobel, Sharp, Brightness)
-│   └── outputs/                   # (Empty folder) Where processed images go
+├── Method_1_Multiprocessing/      # Paradigm 1: Python Multiprocessing [cite: 37-39]
+│   ├── main.py                    # Entry point: Orchestrates parallel workers using multiprocessing.Pool
+│   ├── filters.py                 # Implementation of 5 filters (Gray, Blur, Sobel, Sharpen, Brightness)
+│   └── outputs/                   # Processed images are saved here
 │
-├── Method_2_ConcurrentFutures/    # Paradigm 2: Python Concurrent.Futures [cite: 40]
-│   ├── main.py                    # Entry point (using ThreadPoolExecutor or ProcessPoolExecutor)
-│   ├── filters.py                 # Same filter logic, but kept separate to ensure isolation
-│   └── outputs/                   # (Empty folder)
+├── Method_2_ConcurrentFutures/    # Paradigm 2: Python Concurrent.Futures [cite: 37, 40]
+│   ├── main.py                    # Entry point: Orchestrates parallel workers using ProcessPoolExecutor
+│   ├── filters.py                 # Identical filter logic to ensure fair performance comparison
+│   └── outputs/                   # Processed images are saved here
 │
-├── Analysis/                      # For your Technical 
-│    ├── benchmarks.csv             # Record your speedup/efficiency metrics here 
-│    ├── charts/                    # Save your matplotlib comparison graphs here
-│    └── performance_analysis.md    # Draft your discussion for the report
-├── gitignore
-├── README.md
-├── requirement.txt # Download all the library when it come to the deployment in Google Cloud Platform
+└── Analysis/                      # Performance Analysis & Technical Report Resources [cite: 44]
+    ├── benchmarks.csv             # Raw timing data (Speedup/Efficiency metrics)
+    ├── charts/                    # Generated Matplotlib comparison graphs
+    ├── performance_analysis.md    # Discussion of scalability and bottlenecks
+    └── generate_charts.py         # Script to visualize the results
