@@ -16,11 +16,11 @@ Install the required dependencies (OpenCV, NumPy, Matplotlib) using the provided
 pip install -r requirements.txt
 ```
 ### 3. Run first methodology
-cd Method_1_Multiprocessing
+cd Method1_Multiprocessing
 python main.py
 
 ### 4. Run second methodology
-cd Method_2_ConcurrentFutures
+cd Method2_ConcurrentFutures
 python main.py
 
 ### 5. Run second methodology
