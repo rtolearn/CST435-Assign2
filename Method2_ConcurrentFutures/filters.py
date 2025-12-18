@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import os
 
+# [cite_start]--- FILTER IMPLEMENTATIONS [cite: 23-28] ---
+
 def apply_grayscale(image):
     """Filter 1: Grayscale Conversion"""
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -11,8 +13,8 @@ def apply_gaussian_blur(image):
     return cv2.GaussianBlur(image, (3, 3), 0)
 
 def apply_sobel_edge_detection(image):
-    """Filter 3: Edge Detection (Sobel)"""
-    # Convert to gray if needed
+    """Filter 3: Sobel Edge Detection"""
+    # Ensure input is grayscale
     if len(image.shape) == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
@@ -29,7 +31,7 @@ def apply_sharpening(image):
     return cv2.filter2D(image, -1, kernel)
 
 def adjust_brightness(image, value=30):
-    """Filter 5: Brightness Adjustment"""
+    """Filter 5: Brightness Adjustment (+30)"""
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(hsv)
     lim = 255 - value
@@ -38,13 +40,15 @@ def adjust_brightness(image, value=30):
     final_hsv = cv2.merge((h, s, v))
     return cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
 
-def process_single_image(file_data):
+# --- WORKER FUNCTION ---
+
+def process_single_image(task_data):
     """
     Worker function to process one image.
     Args:
-        file_data: tuple containing (input_path, output_folder)
+        task_data: tuple containing (input_path, output_folder, save_to_disk_flag)
     """
-    input_path, output_folder = file_data
+    input_path, output_folder, save_to_disk = task_data
     
     try:
         # Read image
@@ -54,23 +58,22 @@ def process_single_image(file_data):
 
         filename = os.path.basename(input_path)
 
-        # --- APPLY PIPELINE ---
-        # 1. Adjust Brightness
+        # --- PIPELINE (Heavy Logic: Color First) ---
+        # 1. Adjust Brightness (Color)
         img = adjust_brightness(img)
-        # 2. Gaussian Blur
+        # 2. Gaussian Blur (Color)
         img = apply_gaussian_blur(img)
-        # 3. Sharpening
+        # 3. Sharpening (Color)
         img = apply_sharpening(img)
-        # 4. Grayscale (Final conversion before edge detection often looks best)
-        # Note: If you want colored output, skip this or save separate files.
-        # But usually Edge Detection requires grayscale.
+        # 4. Grayscale
         gray_img = apply_grayscale(img)
         # 5. Sobel Edge Detection
-        final_result = apply_sobel_edge_detection(img)
+        final_result = apply_sobel_edge_detection(gray_img)
 
-        # Save result
-        output_path = os.path.join(output_folder, f"processed_{filename}")
-        cv2.imwrite(output_path, final_result)
+        # --- TOGGLE: SAVE OR SKIP ---
+        if save_to_disk:
+            output_path = os.path.join(output_folder, f"processed_{filename}")
+            cv2.imwrite(output_path, final_result)
         
         return None # Success
         

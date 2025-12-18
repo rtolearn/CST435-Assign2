@@ -17,17 +17,19 @@ pip install -r requirements.txt
 ```
 ### 3. Run first methodology
 cd Method1_Multiprocessing
-python main.py
+python main.py --save=false or
+python main.py --save=true
 
 ### 4. Run second methodology
 cd Method2_ConcurrentFutures
-python main.py
+python main.py --save=false or
+python main.py --save=true
 
 ### 5. Run second methodology
 cd ../Analysis
 python generate_charts.py
 
-
+~~~bash
 CST435-Assignment2-Group/
 │
 ├── README.md                      # Critical: Project description & instructions for the grader [cite: 50]
@@ -54,7 +56,10 @@ CST435-Assignment2-Group/
     ├── performance_analysis.md    # Discussion of scalability and bottlenecks
     └── generate_charts.py         # Script to visualize the results
 
+~~~
 
+~~~bash
 ### This has to be done manually as importing the whole dataset into git is not recommended (currently we are using chicken curry)
 ├── input_images/        
 ├── class_subset/   (put the folder of your dataset here)
+~~~
