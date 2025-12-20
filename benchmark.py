@@ -13,7 +13,7 @@ def run_benchmark_suite():
     # Use a reasonable number of images for benchmarking (e.g., 20)
     # The user mentioned "Food-101 dataset (I will use a manageable subset)"
     # We will use 20 images to keep the benchmark fast but representative for this demo.
-    NUM_IMAGES = 20 
+    NUM_IMAGES = 500 
     
     print(f"Loading {NUM_IMAGES} images from {INPUT_DIR}...")
     image_paths = data_loader.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)
@@ -39,18 +39,15 @@ def run_benchmark_suite():
 
     print(f"Testing Cores: {valid_cores}")
     print("-" * 60)
-    print(f"{'Method':<20} | {'Cores':<5} | {'Time (s)':<10} | {'Speedup':<8} | {'Efficiency':<8}")
-    print("-" * 60)
     
     results = []
     
     # Baseline (1 Core Multiprocessing)
-    # We use this as T_1 for speedup calculations = T_1 / T_p
-    print(f"{'Baseline (MP)':<20} | {1:<5} | ", end="", flush=True)
+    print(f"Running Baseline (MP 1 Core)... ", end="", flush=True)
     start = time.time()
     parallel_ops.run_multiprocessing(tasks, 1)
     t_1 = time.time() - start
-    print(f"{t_1:<10.4f} | {'1.00':<8} | {'1.00':<8}")
+    print(f"Done in {t_1:.4f}s")
     
     results.append({
         "Method": "Baseline (MP)",
@@ -60,34 +57,52 @@ def run_benchmark_suite():
         "Efficiency": 1.0
     })
 
-    methods = [
-        ("Multiprocessing", parallel_ops.run_multiprocessing),
-        ("Concurrent Futures", parallel_ops.run_concurrent_futures)
-    ]
+    # Run all tests first
+    mp_results = {} # Map cores -> stats
+    cf_results = {} # Map cores -> stats
     
-    for name, func in methods:
-        for cores in valid_cores:
-            if name == "Multiprocessing" and cores == 1:
-                continue # Already done baseline
-                
-            print(f"{name:<20} | {cores:<5} | ", end="", flush=True)
-            
+    print("\nRunning Tests...")
+    for cores in valid_cores:
+        # Multiprocessing
+        if cores == 1:
+            stats = {"Time": t_1, "Speedup": 1.0, "Efficiency": 1.0}
+        else:
+            print(f"  > Multiprocessing ({cores} cores)... ", end="", flush=True)
             start = time.time()
-            func(tasks, cores)
-            duration = time.time() - start
+            parallel_ops.run_multiprocessing(tasks, cores)
+            dur = time.time() - start
+            stats = {"Time": dur, "Speedup": t_1/dur, "Efficiency": (t_1/dur)/cores}
+            print(f"{dur:.4f}s")
             
-            speedup = t_1 / duration
-            efficiency = speedup / cores
-            
-            print(f"{duration:<10.4f} | {speedup:<8.2f} | {efficiency:<8.2f}")
-            
-            results.append({
-                "Method": name,
-                "Cores": cores,
-                "Time": duration,
-                "Speedup": speedup,
-                "Efficiency": efficiency
-            })
+        mp_results[cores] = stats
+        results.append({**stats, "Method": "Multiprocessing", "Cores": cores})
+        
+        # Concurrent Futures
+        print(f"  > Concurrent Futures ({cores} cores)... ", end="", flush=True)
+        start = time.time()
+        parallel_ops.run_concurrent_futures(tasks, cores)
+        dur = time.time() - start
+        stats = {"Time": dur, "Speedup": t_1/dur, "Efficiency": (t_1/dur)/cores}
+        print(f"{dur:.4f}s")
+        
+        cf_results[cores] = stats
+        results.append({**stats, "Method": "Concurrent Futures", "Cores": cores})
+
+    # Print Side-by-Side Table
+    print("\n" + "="*85)
+    print(f"{'Cores':<6} | {'MP Time':<9} {'MP Spd':<8} | {'CF Time':<9} {'CF Spd':<8} | {'Winner':<10}")
+    print("-" * 85)
+    
+    for cores in valid_cores:
+        mp = mp_results[cores]
+        cf = cf_results[cores]
+        
+        winner = "MP" if mp["Time"] < cf["Time"] else "CF"
+        if abs(mp["Time"] - cf["Time"]) < 0.01: winner = "Tie"
+        
+        print(f"{cores:<6} | {mp['Time']:<9.4f} {mp['Speedup']:<8.2f} | {cf['Time']:<9.4f} {cf['Speedup']:<8.2f} | {winner:<10}")
+        
+    print("="*85)
 
     # Save details to CSV
     csv_path = "benchmark_results.csv"
@@ -96,8 +111,7 @@ def run_benchmark_suite():
         writer.writeheader()
         writer.writerows(results)
         
-    print("-" * 60)
-    print(f"Results saved to {csv_path}")
+    print(f"\nResults saved to {csv_path}")
     
     # Generate Plot
     plot_results(results)
