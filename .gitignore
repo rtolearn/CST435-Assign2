@@ -12,6 +12,7 @@ debug_steps/
 outputs/
 output_images/
 input_images/class_subset/*
+benchmark_results.csv
 
 # Temporary test outputs
 test_output.jpg
