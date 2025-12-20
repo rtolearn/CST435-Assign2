@@ -98,6 +98,54 @@ def run_benchmark_suite():
         
     print("-" * 60)
     print(f"Results saved to {csv_path}")
+    
+    # Generate Plot
+    plot_results(results)
+
+def plot_results(results):
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("Warning: matplotlib not installed. Skipping plot generation.")
+        return
+
+    print("Generating performance plot...")
+    
+    # Separate data by method
+    mp_data = [r for r in results if "Multiprocessing" in r["Method"] or "Baseline" in r["Method"]]
+    cf_data = [r for r in results if "Concurrent Futures" in r["Method"]]
+    
+    # Sort by cores to ensure line connects correctly
+    mp_data.sort(key=lambda x: x["Cores"])
+    cf_data.sort(key=lambda x: x["Cores"])
+    
+    # Extract X (Cores) and Y (Speedup)
+    mp_cores = [d["Cores"] for d in mp_data]
+    mp_speedup = [d["Speedup"] for d in mp_data]
+    
+    cf_cores = [d["Cores"] for d in cf_data]
+    cf_speedup = [d["Speedup"] for d in cf_data]
+    
+    plt.figure(figsize=(10, 6))
+    
+    # Plot Lines
+    plt.plot(mp_cores, mp_speedup, marker='o', label='Multiprocessing', linewidth=2)
+    plt.plot(cf_cores, cf_speedup, marker='s', label='Concurrent Futures', linewidth=2, linestyle='--')
+    
+    # Ideal Speedup Line (y=x)
+    max_cores = max(max(mp_cores), max(cf_cores))
+    plt.plot([1, max_cores], [1, max_cores], 'k:', label='Ideal Linear Speedup', alpha=0.5)
+    
+    plt.title('Speedup Comparison: Multiprocessing vs Concurrent Futures')
+    plt.xlabel('Number of Cores')
+    plt.ylabel('Speedup Factor (Higher is Better)')
+    plt.grid(True)
+    plt.legend()
+    plt.xticks(mp_cores) # Show only tested core counts on X-axis
+    
+    output_image = "benchmark_plot.png"
+    plt.savefig(output_image)
+    print(f"Plot saved to {output_image}")
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
