@@ -55,17 +55,18 @@ def run_multiprocessing(tasks, num_cores):
 
 def run_concurrent_futures(tasks, num_cores):
     """
-    Executes tasks using the concurrent.futures module (ProcessPoolExecutor).
+    Executes tasks using the concurrent.futures module (ThreadPoolExecutor).
+    NOTE: In Python, Threads are limited by the GIL. This is expected to be
+    slower than Multiprocessing for CPU-bound tasks, but demonstrates the difference.
     
     Args:
         tasks (list): List of task_args tuples.
-        num_cores (int): Number of worker processes.
+        num_cores (int): Number of worker threads.
     """
-    input_path, output_folder, save_flag = tasks[0]
     results = []
     
-    with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
-        # map returns an iterator, converting to list triggers execution
+    # Switch to ThreadPoolExecutor
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_cores) as executor:
         results = list(executor.map(worker_task, tasks))
         
     return results

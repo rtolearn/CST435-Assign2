@@ -77,8 +77,8 @@ def run_benchmark_suite():
         mp_results[cores] = stats
         results.append({**stats, "Method": "Multiprocessing", "Cores": cores})
         
-        # Concurrent Futures
-        print(f"  > Concurrent Futures ({cores} cores)... ", end="", flush=True)
+        # Concurrent Futures (Threads)
+        print(f"  > Concurrent Futures (Threads) ({cores} cores)... ", end="", flush=True)
         start = time.time()
         parallel_ops.run_concurrent_futures(tasks, cores)
         dur = time.time() - start
@@ -86,7 +86,7 @@ def run_benchmark_suite():
         print(f"{dur:.4f}s")
         
         cf_results[cores] = stats
-        results.append({**stats, "Method": "Concurrent Futures", "Cores": cores})
+        results.append({**stats, "Method": "Concurrent Futures (Threads)", "Cores": cores})
 
     # Print Side-by-Side Table
     print("\n" + "="*85)
