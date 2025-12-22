@@ -9,8 +9,8 @@ def apply_grayscale(image):
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 def apply_gaussian_blur(image):
-    """Filter 2: Gaussian Blur (7x7 kernel)"""
-    return cv2.GaussianBlur(image, (7, 7), 0)
+    """Filter 2: Gaussian Blur (3x3 kernel)"""
+    return cv2.GaussianBlur(image, (3, 3), 0)
 
 def apply_sobel_edge_detection(image):
     """Filter 3: Sobel Edge Detection"""
