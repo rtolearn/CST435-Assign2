@@ -5,21 +5,34 @@
 
 ---
 
-## 1. Project Overview & Architecture
-This project implements a high-performance parallel image processing system capable of filtering thousands of images using multiple CPU cores.
+## 1. Project Overview
+This project implements a high-performance parallel image processing system capable of filtering thousands of images using multiple CPU cores. It compares two parallel paradigms: **Multiprocessing** (Processes) vs **Concurrent Futures** (Threads).
 
-**The Goal**: Apply a chain of 5 effects (Brightness, Blur, Sharpen, Grayscale, Sobel) to the Food-101 dataset.  
-**The Solution**: We compare two Python parallel paradigms:
-1.  **Multiprocessing (`mp`)**: Uses separate Processes (bypass GIL, high overhead on Windows).
-2.  **Concurrent Futures (`cf`)**: Implemented using **Threads** to demonstrate the difference (fast startup, but limited by GIL). *Note: Threads perform surprisingly well here due to OpenCV releasing the GIL.*
+### 📂 File Structure & Functionality
+The code is organized into modular components for clarity and reusability:
 
-### File Structure
-We use a clean, modular architecture:
-*   **`main.py`**: The Command Center. Usage: `python main.py --count 10`.
-*   **`parallel_ops.py`**: The Engine. Contains the logic for both Multiprocessing and Threading engines.
-*   **`filters.py`**: The Artist. Contains the math for the 5 image filters.
-*   **`data_loader.py`**: The File Manager. Handles loading/saving images.
-*   **`benchmark.py`**: The Tester. Auto-runs speed tests and plots graphs.
+#### **Core Logic**
+*   **`main.py`**:  
+    The **Command Center**. It handles argument parsing (`--count`, `--cores`, `--method`), orchestrates the workflow, and reports success/failure. It imports the specific method modules.
+*   **`tasks.py`**:  
+    The **Worker Logic**. Contains the `worker_task(args)` function, which represents a single unit of work (Load Image -> Process Pipeline -> Save Image). Used by both paradigms to share logic.
+*   **`filters.py`**:  
+    The **Mathematical Library**. Contains the pure implementation of the 5 image processing algorithms (Brightness, 3x3 Blur, Sharpening, Grayscale, Sobel).
+*   **`data_loader.py`**:  
+    The **I/O Manager**. Handles safely reading images from disk and creating output directories/files.
+
+#### **Parallel Paradigms**
+*   **`method_mp.py`**:  
+    **Paradigm 1 (Multiprocessing)**. Implements parallelism using `multiprocessing.Pool`. This creates separate OS processes for each worker, bypassing the Python GIL. optimal for CPU-heavy tasks on Linux, but has high startup overhead on Windows.
+*   **`method_cf.py`**:  
+    **Paradigm 2 (Concurrent Futures)**. Implements parallelism using `ThreadPoolExecutor`. This uses Threads. While usually limited by the GIL, it performs exceptionally well here because OpenCV releases the GIL during heavy operations.
+
+#### **Analysis & Testing**
+*   **`benchmark.py`**:  
+    The **Performance Tester**. Automatically runs both methods across 1, 2, 4, and 8 cores, calculates Speedup/Efficiency, generates a data CSV, and plots a comparison graph.
+*   **`benchmark_plot.png`**: The visual result of the benchmark.
+*   **`visualize_steps.py`**: A debug script that saves intermediate images (e.g. `step1_brightness.jpg`) to verified the filter chain visually.
+*   **`verify_phase1.py`**: A simple health-check script to confirm the pipeline works on a single image.
 
 ---
 
@@ -39,47 +52,34 @@ pip install -r requirements.txt
 ```
 
 ### Running the Processor
-You can run the processor manually on a small set of images to see it work.
+You can run the processor manually:
 ```bash
-# Process 10 images using 4 cores with Multiprocessing
+# Method 1: Multiprocessing (4 cores, 10 images)
 python main.py --count 10 --cores 4 --method mp --save
 
-# Process 10 images using 4 cores with Threads
+# Method 2: Concurrent Futures/Threads (4 cores, 10 images)
 python main.py --count 10 --cores 4 --method cf --save
 ```
-*   Check the `outputs/` folder to see the results.
 
 ---
 
 ## 3. Benchmarking
-To satisfy the assignment usage of "Speedup and Efficiency metrics", use the automated benchmark tool.
+To generate the "Speedup and Efficiency" report required by the assignment:
 
 ```bash
 python benchmark.py
 ```
-This script will:
-1.  Run the pipeline on **1, 2, 4, 8 cores**.
-2.  Test **both** Multiprocessing and Threading.
-3.  Calculate **Speedup** (vs 1 core) and **Efficiency**.
-4.  Generate a side-by-side comparison table.
-5.  Generate a visual plot: `benchmark_plot.png`.
-6.  Save raw data to: `benchmark_results.csv`.
+This will:
+1.  Run the full 1000-image dataset on 1, 2, 4, 8 cores.
+2.  Compare Multiprocessing vs Threads side-by-side.
+3.  Output `benchmark_results.csv` and `benchmark_plot.png`.
 
 ---
 
-## 4. Technical Details (For Graders)
-
-### The Filter Pipeline
-Every image goes through this exact sequence:
+## 4. Filter Pipeline Details
+Every image goes through this exact sequence (defined in `filters.py`):
 1.  **Brightness**: +60 Value (HSV space).
-2.  **Gaussian Blur**: 7x7 Kernel (Noise reduction).
+2.  **Gaussian Blur**: 3x3 Kernel (Noise reduction).
 3.  **Sharpening**: High-pass filter (Edge enhancement).
 4.  **Grayscale**: Luminance conversion.
 5.  **Sobel Edge Detection**: Gradient calculation.
-
-### Design Decisions
-*   **Process vs Threads**: We implemented both. 
-    *   `--method mp` uses `multiprocessing.Pool` (Processes).
-    *   `--method cf` uses `ThreadPoolExecutor` (Threads).
-*   **Input Data**: The system expects input images in `chicken_curry/chicken_curry/`.
-*   **Output Data**: Processed images are saved to `outputs/` (automatically created).
