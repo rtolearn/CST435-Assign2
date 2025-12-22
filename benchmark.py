@@ -13,7 +13,7 @@ def run_benchmark_suite():
     # Use a reasonable number of images for benchmarking (e.g., 20)
     # The user mentioned "Food-101 dataset (I will use a manageable subset)"
     # We will use 20 images to keep the benchmark fast but representative for this demo.
-    NUM_IMAGES = 500 
+    NUM_IMAGES = 1000 
     
     print(f"Loading {NUM_IMAGES} images from {INPUT_DIR}...")
     image_paths = data_loader.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)
