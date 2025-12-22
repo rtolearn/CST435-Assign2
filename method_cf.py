@@ -1,5 +1,5 @@
 import concurrent.futures
-import tasks
+import utils
 
 def run_concurrent_futures(task_list, num_cores):
     """
@@ -15,6 +15,6 @@ def run_concurrent_futures(task_list, num_cores):
     
     # Switch to ThreadPoolExecutor
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_cores) as executor:
-        results = list(executor.map(tasks.worker_task, task_list))
+        results = list(executor.map(utils.worker_task, task_list))
         
     return results

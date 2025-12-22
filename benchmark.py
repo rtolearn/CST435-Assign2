@@ -2,7 +2,7 @@ import time
 import csv
 import multiprocessing
 import os
-import data_loader
+import utils
 import method_mp
 import method_cf
 
@@ -16,7 +16,7 @@ def run_benchmark_suite():
     NUM_IMAGES = 1000 
     
     print(f"Loading {NUM_IMAGES} images from {INPUT_DIR}...")
-    image_paths = data_loader.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)
+    image_paths = utils.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)
     
     if len(image_paths) < NUM_IMAGES:
         print(f"Warning: Only found {len(image_paths)} images.")

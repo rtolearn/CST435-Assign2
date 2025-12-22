@@ -1,5 +1,5 @@
 import multiprocessing
-import tasks
+import utils
 
 def run_multiprocessing(task_list, num_cores):
     """
@@ -14,6 +14,6 @@ def run_multiprocessing(task_list, num_cores):
     # Create a Pool of workers
     with multiprocessing.Pool(processes=num_cores) as pool:
         # Map the tasks to the workers
-        results = pool.map(tasks.worker_task, task_list)
+        results = pool.map(utils.worker_task, task_list)
         
     return results

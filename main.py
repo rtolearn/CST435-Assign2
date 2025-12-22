@@ -2,7 +2,7 @@ import os
 import time
 import argparse
 import multiprocessing
-import data_loader
+import utils
 import method_mp
 import method_cf
 
@@ -32,7 +32,7 @@ def main():
     
     # Get image paths
     print(f"\nScanning {INPUT_DIR}...")
-    image_paths = data_loader.get_image_paths(INPUT_DIR, limit=args.count)
+    image_paths = utils.get_image_paths(INPUT_DIR, limit=args.count)
     
     if not image_paths:
         print("ERROR: No images found. Please check 'chicken_curry/chicken_curry/' exists.")

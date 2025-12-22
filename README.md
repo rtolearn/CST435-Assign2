@@ -14,25 +14,23 @@ The code is organized into modular components for clarity and reusability:
 #### **Core Logic**
 *   **`main.py`**:  
     The **Command Center**. It handles argument parsing (`--count`, `--cores`, `--method`), orchestrates the workflow, and reports success/failure. It imports the specific method modules.
-*   **`tasks.py`**:  
-    The **Worker Logic**. Contains the `worker_task(args)` function, which represents a single unit of work (Load Image -> Process Pipeline -> Save Image). Used by both paradigms to share logic.
-*   **`filters.py`**:  
-    The **Mathematical Library**. Contains the pure implementation of the 5 image processing algorithms (Brightness, 3x3 Blur, Sharpening, Grayscale, Sobel).
-*   **`data_loader.py`**:  
-    The **I/O Manager**. Handles safely reading images from disk and creating output directories/files.
+*   **`utils.py`**:  
+    The **Unified Helper Library**. Implements the "Separation of Concerns" pattern by containing:
+    *   **Filters**: Brightness, 3x3 Blur, Sharpening, Grayscale, Sobel.
+    *   **I/O**: Safe image loading and saving.
+    *   **Worker Logic**: The `worker_task` function that processes a single image.
+*   **`requirements.txt`**: List of dependencies (`opencv-python`, `numpy`, `matplotlib`).
 
 #### **Parallel Paradigms**
 *   **`method_mp.py`**:  
-    **Paradigm 1 (Multiprocessing)**. Implements parallelism using `multiprocessing.Pool`. This creates separate OS processes for each worker, bypassing the Python GIL. optimal for CPU-heavy tasks on Linux, but has high startup overhead on Windows.
+    **Paradigm 1 (Multiprocessing)**. Implements parallelism using `multiprocessing.Pool` (Processes). Best for true CPU parallelism on Linux, but has high startup cost on Windows.
 *   **`method_cf.py`**:  
-    **Paradigm 2 (Concurrent Futures)**. Implements parallelism using `ThreadPoolExecutor`. This uses Threads. While usually limited by the GIL, it performs exceptionally well here because OpenCV releases the GIL during heavy operations.
+    **Paradigm 2 (Concurrent Futures)**. Implements parallelism using `ThreadPoolExecutor` (Threads). Extremely fast for this specific workload because OpenCV operations release the Python GIL.
 
 #### **Analysis & Testing**
 *   **`benchmark.py`**:  
     The **Performance Tester**. Automatically runs both methods across 1, 2, 4, and 8 cores, calculates Speedup/Efficiency, generates a data CSV, and plots a comparison graph.
-*   **`benchmark_plot.png`**: The visual result of the benchmark.
-*   **`visualize_steps.py`**: A debug script that saves intermediate images (e.g. `step1_brightness.jpg`) to verified the filter chain visually.
-*   **`verify_phase1.py`**: A simple health-check script to confirm the pipeline works on a single image.
+*   **`benchmark_plot.png`**: The visual result of the benchmark.rt
 
 ---
 
@@ -47,7 +45,7 @@ The code is organized into modular components for clarity and reusability:
 # 1. Activate your venv (Windows)
 ./venv/Scripts/Activate.ps1
 
-# 2. Install dependencies (OpenCV, Matplotlib, etc)
+# 2. Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -77,7 +75,7 @@ This will:
 ---
 
 ## 4. Filter Pipeline Details
-Every image goes through this exact sequence (defined in `filters.py`):
+Every image goes through this exact sequence (defined in `utils.py`):
 1.  **Brightness**: +60 Value (HSV space).
 2.  **Gaussian Blur**: 3x3 Kernel (Noise reduction).
 3.  **Sharpening**: High-pass filter (Edge enhancement).
