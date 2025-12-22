@@ -3,7 +3,8 @@ import csv
 import multiprocessing
 import os
 import data_loader
-import parallel_ops
+import method_mp
+import method_cf
 
 def run_benchmark_suite():
     print("--- Starting Benchmark Suite ---")
@@ -12,7 +13,7 @@ def run_benchmark_suite():
     # Use a reasonable number of images for benchmarking (e.g., 20)
     # The user mentioned "Food-101 dataset (I will use a manageable subset)"
     # We will use 20 images to keep the benchmark fast but representative for this demo.
-    NUM_IMAGES = 500 
+    NUM_IMAGES = 1000 
     
     print(f"Loading {NUM_IMAGES} images from {INPUT_DIR}...")
     image_paths = data_loader.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)
@@ -44,7 +45,7 @@ def run_benchmark_suite():
     # Baseline (1 Core Multiprocessing)
     print(f"Running Baseline (MP 1 Core)... ", end="", flush=True)
     start = time.time()
-    parallel_ops.run_multiprocessing(tasks, 1)
+    method_mp.run_multiprocessing(tasks, 1)
     t_1 = time.time() - start
     print(f"Done in {t_1:.4f}s")
     
@@ -68,7 +69,7 @@ def run_benchmark_suite():
         else:
             print(f"  > Multiprocessing ({cores} cores)... ", end="", flush=True)
             start = time.time()
-            parallel_ops.run_multiprocessing(tasks, cores)
+            method_mp.run_multiprocessing(tasks, cores)
             dur = time.time() - start
             stats = {"Time": dur, "Speedup": t_1/dur, "Efficiency": (t_1/dur)/cores}
             print(f"{dur:.4f}s")
@@ -79,7 +80,7 @@ def run_benchmark_suite():
         # Concurrent Futures (Threads)
         print(f"  > Concurrent Futures (Threads) ({cores} cores)... ", end="", flush=True)
         start = time.time()
-        parallel_ops.run_concurrent_futures(tasks, cores)
+        method_cf.run_concurrent_futures(tasks, cores)
         dur = time.time() - start
         stats = {"Time": dur, "Speedup": t_1/dur, "Efficiency": (t_1/dur)/cores}
         print(f"{dur:.4f}s")

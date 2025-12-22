@@ -3,7 +3,8 @@ import time
 import argparse
 import multiprocessing
 import data_loader
-import parallel_ops
+import method_mp
+import method_cf
 
 def main():
     # --- COMMAND LINE ARGUMENT PARSING ---
@@ -47,9 +48,9 @@ def main():
     start_time = time.time()
     
     if args.method == 'mp':
-        results = parallel_ops.run_multiprocessing(tasks, args.cores)
+        results = method_mp.run_multiprocessing(tasks, args.cores)
     else:
-        results = parallel_ops.run_concurrent_futures(tasks, args.cores)
+        results = method_cf.run_concurrent_futures(tasks, args.cores)
         
     duration = time.time() - start_time
     
