@@ -166,7 +166,7 @@ def worker_task(task_args):
         # 1. Load (Using local function)
         image = load_image(input_path)
         if image is None:
-            return False
+            return (False, f"Failed to load {input_path}")
             
         # 2. Process (Using local function)
         processed_image = process_pipeline(image)
@@ -177,8 +177,8 @@ def worker_task(task_args):
             output_path = os.path.join(output_folder, filename)
             save_image(processed_image, output_path)
             
-        return True
+        return (True, f"Processed {os.path.basename(input_path)}")
         
     except Exception as e:
         print(f"Error processing {task_args[0]}: {e}")
-        return False
+        return (False, str(e))

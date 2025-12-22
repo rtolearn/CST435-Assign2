@@ -52,11 +52,14 @@ pip install -r requirements.txt
 ### Running the Processor
 You can run the processor manually:
 ```bash
-# Method 1: Multiprocessing (4 cores, 10 images)
+# Method 1: Multiprocessing (4 cores, 10 images, SAVE output)
 python main.py --count 10 --cores 4 --method mp --save
 
-# Method 2: Concurrent Futures/Threads (4 cores, 10 images)
+# Method 2: Concurrent Futures (4 cores, 10 images, SAVE output)
 python main.py --count 10 --cores 4 --method cf --save
+
+# Run WITHOUT saving (Benchmark Mode - Faster)
+python main.py --count 100 --cores 8 --method cf
 ```
 
 ---
