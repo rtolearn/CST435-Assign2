@@ -7,6 +7,8 @@ venv/
 # Data and Outputs
 chicken_curry/
 food-101/
+*.zip
+food-101.zip
 __MACOSX/
 
 debug_steps/
