@@ -9,11 +9,11 @@ import method_cf
 def run_benchmark_suite():
     print("--- Starting Benchmark Suite ---")
     # Setup
-    INPUT_DIR = os.path.join("chicken_curry", "chicken_curry")
+    INPUT_DIR = os.path.join("food-101", "food-101", "images")
     # Use a reasonable number of images for benchmarking (e.g., 20)
     # The user mentioned "Food-101 dataset (I will use a manageable subset)"
     # We will use 20 images to keep the benchmark fast but representative for this demo.
-    NUM_IMAGES = 1000 
+    NUM_IMAGES = 500
     
     print(f"Loading {NUM_IMAGES} images from {INPUT_DIR}...")
     image_paths = utils.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)

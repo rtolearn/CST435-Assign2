@@ -27,7 +27,7 @@ def main():
     
     # --- SETUP ---
     # Corrected path for nested directory structure
-    INPUT_DIR = os.path.join("chicken_curry", "chicken_curry") 
+    INPUT_DIR = os.path.join("food-101", "food-101", "images") 
     OUTPUT_DIR = "outputs"
     
     # Get image paths

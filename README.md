@@ -71,7 +71,7 @@ To generate the "Speedup and Efficiency" report required by the assignment:
 python benchmark.py
 ```
 This will:
-1.  Run the full 1000-image dataset on 1, 2, 4, 8 cores.
+1.  Run the full 3000-image dataset (automatically selects 3 food classes).
 2.  Compare Multiprocessing vs Threads side-by-side.
 3.  Output `benchmark_results.csv` and `benchmark_plot.png`.
 

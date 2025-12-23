@@ -8,9 +8,11 @@ import time
 def get_image_paths(source_dir, limit=None):
     """
     Retrieves image file paths from the source directory.
+    If the directory contains subdirectories (classes), it picks 3 classes 
+    and collects images from them up to the limit.
     
     Args:
-        source_dir (str): Directory containing images.
+        source_dir (str): Root directory containing images or class folders.
         limit (int, optional): Maximum number of images to return.
         
     Returns:
@@ -23,13 +25,27 @@ def get_image_paths(source_dir, limit=None):
         print(f"Warning: Source directory '{source_dir}' does not exist.")
         return []
 
+    # Get list of subdirectories (classes)
+    subdirs = [f.path for f in os.scandir(source_dir) if f.is_dir()]
+    
+    # If no subdirs, treat source_dir as flat directory
+    if not subdirs:
+        scan_dirs = [source_dir]
+    else:
+        # Sort to ensure deterministic selection (e.g. apple_pie, baby_back_ribs, baklava)
+        subdirs.sort()
+        # Pick top 3 folders as requested
+        scan_dirs = subdirs[:3]
+        print(f"Selected classes: {[os.path.basename(d) for d in scan_dirs]}")
+
     count = 0
-    for entry in os.scandir(source_dir):
-        if entry.is_file() and entry.name.lower().endswith(valid_extensions):
-            image_paths.append(entry.path)
-            count += 1
-            if limit and count >= limit:
-                break
+    for folder in scan_dirs:
+        for entry in os.scandir(folder):
+            if entry.is_file() and entry.name.lower().endswith(valid_extensions):
+                image_paths.append(entry.path)
+                count += 1
+                if limit and count >= limit:
+                    return image_paths
                 
     return image_paths
 
