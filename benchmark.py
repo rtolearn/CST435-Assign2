@@ -137,7 +137,7 @@ def run_benchmark_suite():
         plt.grid(True, alpha=0.3)
         plt.xticks(IMAGE_COUNTS)
         
-        filename = os.path.join(output_dir, f"time_{w}worker.png")
+        filename = os.path.join(output_dir, f"time_vs_images_{w}worker.png")
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"  > Saved {filename}")
         plt.close()
