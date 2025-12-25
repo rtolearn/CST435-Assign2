@@ -10,7 +10,7 @@ def run_benchmark_suite():
     print("--- Starting Benchmark Suite (3-Way Comparison) ---")
     # Setup
     INPUT_DIR = os.path.join("food-101", "food-101", "images")
-    NUM_IMAGES = 50  # User requested 50 images
+    NUM_IMAGES = 50
     
     print(f"Loading {NUM_IMAGES} images from {INPUT_DIR}...")
     image_paths = utils.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)
@@ -22,9 +22,9 @@ def run_benchmark_suite():
     tasks = [(p, "outputs", False) for p in image_paths]
     
     # Varied worker counts as requested
-    # We force specific worker counts [2, 4, 6, 8] REGARDLESS of physical cores
+    # We force specific worker counts [1, 2, 4, 6, 8] REGARDLESS of physical cores
     # to demonstrate scalability (or lack thereof) even on machines with fewer cores.
-    worker_counts = [2, 4, 6, 8]
+    worker_counts = [1, 2, 4, 6, 8]
     print(f"Testing Worker Counts: {worker_counts}")
     print("-" * 60)
     
@@ -141,7 +141,7 @@ def plot_results(data):
     plt.ylabel('Time Taken (Seconds) [Lower is Better]')
     plt.grid(True)
     plt.legend()
-    plt.xticks([2, 4, 6, 8])
+    plt.xticks([1, 2, 4, 6, 8])
     
     output_image = "benchmark_plot.png"
     plt.savefig(output_image)

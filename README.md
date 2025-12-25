@@ -77,8 +77,8 @@ To generate the "Speedup and Efficiency" report required by the assignment:
 python benchmark.py
 ```
 This will:
-1.  Run the benchmark on **50 images**.
-2.  Test with **2, 4, 6, 8 Workers** (even if physical cores < 8).
+1.  Run the benchmark on the number of images specified by the user.
+2.  Test with **1, 2, 4, 6, 8 Workers** (even if physical cores < 8).
 3.  Compare **Multiprocessing** vs **Threads** vs **Concurrent Processes**.
 4.  Output a **Pivot Table** and `benchmark_plot.png`.
 
