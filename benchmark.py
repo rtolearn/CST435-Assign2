@@ -14,7 +14,7 @@ def run_benchmark_suite():
     INPUT_DIR = os.path.join("food-101", "food-101", "images")
     
     # Dimensions to test
-    # IMAGE_COUNTS = [50, 100, 500]
+    # IMAGE_COUNTS = [50, 100, 500, 1000]
     IMAGE_COUNTS = [50]
     WORKER_COUNTS = [1, 2, 4, 8]
     
