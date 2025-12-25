@@ -13,8 +13,8 @@ def run_benchmark_suite():
     INPUT_DIR = os.path.join("food-101", "food-101", "images")
     
     # Dimensions to test
-    IMAGE_COUNTS = [10000]
-    WORKER_COUNTS = [1, 2, 4, 6, 8]
+    IMAGE_COUNTS = [50, 100, 500]
+    WORKER_COUNTS = [1, 2, 4, 8]
     
     # Load Max Images once
     MAX_IMAGES = max(IMAGE_COUNTS)
