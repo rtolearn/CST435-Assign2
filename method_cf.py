@@ -1,20 +1,24 @@
 import concurrent.futures
 import utils
 
-def run_concurrent_futures(task_list, num_cores):
+def run(task_list, num_cores, mode='thread'):
     """
-    Executes tasks using the concurrent.futures module (ThreadPoolExecutor).
-    NOTE: In Python, Threads are limited by the GIL. This is expected to be
-    slower than Multiprocessing for CPU-bound tasks, but demonstrates the difference.
+    Executes tasks using the concurrent.futures module.
     
     Args:
         task_list (list): List of task_args tuples.
-        num_cores (int): Number of worker threads.
+        num_cores (int): Number of workers.
+        mode (str): 'thread' for ThreadPoolExecutor, 'process' for ProcessPoolExecutor.
     """
     results = []
     
-    # Switch to ThreadPoolExecutor
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_cores) as executor:
+    if mode == 'process':
+        Executor = concurrent.futures.ProcessPoolExecutor
+    else:
+        Executor = concurrent.futures.ThreadPoolExecutor
+    
+    # Run with selected executor
+    with Executor(max_workers=num_cores) as executor:
         results = list(executor.map(utils.worker_task, task_list))
         
     return results

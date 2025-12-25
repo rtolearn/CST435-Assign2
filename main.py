@@ -13,15 +13,16 @@ def main():
                         help='Number of images to process (default: all)')
     parser.add_argument('--cores', type=int, default=multiprocessing.cpu_count(),
                         help='Number of cores/workers (default: CPU count)')
-    parser.add_argument('--method', type=str, choices=['mp', 'cf'], default='mp',
-                        help='Parallel method: mp (multiprocessing) or cf (concurrent.futures)')
+    parser.add_argument('--method', type=str, choices=['mp', 'cf', 'cfp'], default='mp',
+                        help='Parallel method: mp (multiprocessing), cf (threads), cfp (concurrent processes)')
     parser.add_argument('--save', action='store_true',
                         help='Enable saving of output images.')
     
     args = parser.parse_args()
     
     print(f"\n>>> CONFIGURATION")
-    print(f"    Method:   {'Multiprocessing' if args.method == 'mp' else 'Concurrent Futures'}")
+    mapping = {'mp': 'Multiprocessing', 'cf': 'Concurrent Futures (Threads)', 'cfp': 'Concurrent Futures (Process)'}
+    print(f"    Method:   {mapping.get(args.method, 'Unknown')}")
     print(f"    Cores:    {args.cores}")
     print(f"    Saving:   {'Enabled' if args.save else 'Disabled (Benchmark Mode)'}")
     
@@ -49,8 +50,12 @@ def main():
     
     if args.method == 'mp':
         results = method_mp.run_multiprocessing(tasks, args.cores)
+    elif args.method == 'cfp':
+        # New API call: method_cf.run with mode='process'
+        results = method_cf.run(tasks, args.cores, mode='process')
     else:
-        results = method_cf.run_concurrent_futures(tasks, args.cores)
+        # New API call: method_cf.run with mode='thread' (default)
+        results = method_cf.run(tasks, args.cores, mode='thread')
         
     duration = time.time() - start_time
     

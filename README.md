@@ -25,7 +25,9 @@ The code is organized into modular components for clarity and reusability:
 *   **`method_mp.py`**:  
     **Paradigm 1 (Multiprocessing)**. Implements parallelism using `multiprocessing.Pool` (Processes). Best for true CPU parallelism on Linux, but has high startup cost on Windows.
 *   **`method_cf.py`**:  
-    **Paradigm 2 (Concurrent Futures)**. Implements parallelism using `ThreadPoolExecutor` (Threads). Extremely fast for this specific workload because OpenCV operations release the Python GIL.
+    **Paradigm 2 (Concurrent Futures - Threads)**. Implements parallelism using `ThreadPoolExecutor` (Threads). Extremely fast for this specific workload because OpenCV operations release the Python GIL.
+*   **`method_cf_process.py`**:  
+    **Paradigm 3 (Concurrent Futures - Process)**. Implements parallelism using `ProcessPoolExecutor` (Processes). Similar to Multiprocessing but uses the higher-level Futures API.
 
 #### **Analysis & Testing**
 *   **`benchmark.py`**:  
@@ -58,6 +60,9 @@ python main.py --count 10 --cores 4 --method mp --save
 # Method 2: Concurrent Futures (4 cores, 10 images, SAVE output)
 python main.py --count 10 --cores 4 --method cf --save
 
+# Method 3: Concurrent Futures (Process)
+python main.py --count 10 --cores 4 --method cfp --save
+
 # Run WITHOUT saving (Benchmark Mode - Faster)
 python main.py --count 100 --cores 8 --method cf
 ```
@@ -72,7 +77,7 @@ python benchmark.py
 ```
 This will:
 1.  Run the full 3000-image dataset (automatically selects 3 food classes).
-2.  Compare Multiprocessing vs Threads side-by-side.
+2.  Compare **Multiprocessing** vs **Threads** vs **Concurrent Processes** side-by-side.
 3.  Output `benchmark_results.csv` and `benchmark_plot.png`.
 
 ---
