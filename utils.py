@@ -32,11 +32,11 @@ def get_image_paths(source_dir, limit=None):
     if not subdirs:
         scan_dirs = [source_dir]
     else:
-        # Sort to ensure deterministic selection (e.g. apple_pie, baby_back_ribs, baklava)
+        # Sort to ensure deterministic selection
         subdirs.sort()
-        # Pick top 3 folders as requested
-        scan_dirs = subdirs[:3]
-        print(f"Selected classes: {[os.path.basename(d) for d in scan_dirs]}")
+        # Use ALL folders (not just first 3) to reach the image limit
+        scan_dirs = subdirs
+        print(f"Found {len(scan_dirs)} food classes, loading images...")
 
     count = 0
     for folder in scan_dirs:

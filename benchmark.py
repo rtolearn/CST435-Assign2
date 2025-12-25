@@ -10,7 +10,7 @@ def run_benchmark_suite():
     print("--- Starting Benchmark Suite (3-Way Comparison) ---")
     # Setup
     INPUT_DIR = os.path.join("food-101", "food-101", "images")
-    NUM_IMAGES = 50
+    NUM_IMAGES = 5000
     
     print(f"Loading {NUM_IMAGES} images from {INPUT_DIR}...")
     image_paths = utils.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)
