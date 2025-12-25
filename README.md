@@ -25,9 +25,10 @@ The code is organized into modular components for clarity and reusability:
 *   **`method_mp.py`**:  
     **Paradigm 1 (Multiprocessing)**. Implements parallelism using `multiprocessing.Pool` (Processes). Best for true CPU parallelism on Linux, but has high startup cost on Windows.
 *   **`method_cf.py`**:  
-    **Paradigm 2 (Concurrent Futures - Threads)**. Implements parallelism using `ThreadPoolExecutor` (Threads). Extremely fast for this specific workload because OpenCV operations release the Python GIL.
-*   **`method_cf_process.py`**:  
-    **Paradigm 3 (Concurrent Futures - Process)**. Implements parallelism using `ProcessPoolExecutor` (Processes). Similar to Multiprocessing but uses the higher-level Futures API.
+    **Paradigm 2 & 3 (Concurrent Futures)**. Unified module implementing both:
+    *   **Threads** (`ThreadPoolExecutor`): Fast, low overhead.
+    *   **Processes** (`ProcessPoolExecutor`): CPU isolation.
+    Controlled via the `mode` parameter.
 
 #### **Analysis & Testing**
 *   **`benchmark.py`**:  
@@ -76,9 +77,10 @@ To generate the "Speedup and Efficiency" report required by the assignment:
 python benchmark.py
 ```
 This will:
-1.  Run the full 3000-image dataset (automatically selects 3 food classes).
+1.  Run the benchmark on **50 images** (configurable).
 2.  Compare **Multiprocessing** vs **Threads** vs **Concurrent Processes** side-by-side.
-3.  Output `benchmark_results.csv` and `benchmark_plot.png`.
+3.  Output a **Pivot Table** showing the Best Method for each core count.
+4.  Generate `benchmark_results.csv` and `benchmark_plot.png`.
 
 ---
 

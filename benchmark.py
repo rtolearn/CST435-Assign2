@@ -73,9 +73,9 @@ def run_benchmark_suite():
         plot_data['CF (Process)'].append((workers, dur))
 
     # Print Side-by-Side Pivot Table
-    print("\n" + "="*65)
-    print(f"{'Workers':<10} | {'MP Time':<12} | {'CF Process':<12} | {'CF Thread':<12}")
-    print("-" * 65)
+    print("\n" + "="*80)
+    print(f"{'Workers':<8} | {'MP (s)':<10} | {'CF Proc (s)':<12} | {'CF Thrd (s)':<12} | {'Best Method':<15}")
+    print("-" * 80)
     
     csv_rows = []
     for w in worker_counts:
@@ -83,20 +83,25 @@ def run_benchmark_suite():
         cfp = benchmark_data[w].get('CF_Process', 0)
         cft = benchmark_data[w].get('CF_Thread', 0)
         
-        print(f"{w:<10} | {mp:<12.4f} | {cfp:<12.4f} | {cft:<12.4f}")
+        # Determine Winner
+        times = {'Multiprocessing': mp, 'CF Process': cfp, 'CF Thread': cft}
+        best_method = min(times, key=times.get)
+        
+        print(f"{w:<8} | {mp:<10.4f} | {cfp:<12.4f} | {cft:<12.4f} | {best_method:<15}")
         
         csv_rows.append({
             'Workers': w,
             'MP_Time': mp,
             'CF_Process_Time': cfp,
-            'CF_Thread_Time': cft
+            'CF_Thread_Time': cft,
+            'Winner': best_method
         })
-    print("="*65)
+    print("="*80)
 
     # Save details to CSV (Pivoted format)
     csv_path = "benchmark_results.csv"
     with open(csv_path, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=["Workers", "MP_Time", "CF_Process_Time", "CF_Thread_Time"])
+        writer = csv.DictWriter(f, fieldnames=["Workers", "MP_Time", "CF_Process_Time", "CF_Thread_Time", "Winner"])
         writer.writeheader()
         writer.writerows(csv_rows)
         
