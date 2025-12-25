@@ -5,147 +5,139 @@ import os
 import utils
 import method_mp
 import method_cf
+import matplotlib.pyplot as plt
 
 def run_benchmark_suite():
-    print("--- Starting Benchmark Suite (3-Way Comparison) ---")
-    # Setup
+    print("--- Starting Scalability Benchmark Suite ---")
+    
+    # 1. SETUP
     INPUT_DIR = os.path.join("food-101", "food-101", "images")
-    NUM_IMAGES = 5000
     
-    print(f"Loading {NUM_IMAGES} images from {INPUT_DIR}...")
-    image_paths = utils.get_image_paths(INPUT_DIR, limit=NUM_IMAGES)
+    # Dimensions to test
+    IMAGE_COUNTS = [5, 10, 50, 100, 500]
+    WORKER_COUNTS = [1, 2, 4, 6, 8]
     
-    if len(image_paths) < NUM_IMAGES:
-        print(f"Warning: Only found {len(image_paths)} images.")
+    # Load Max Images once (to avoid reloading for every test)
+    MAX_IMAGES = max(IMAGE_COUNTS)
+    print(f"Loading {MAX_IMAGES} images cache from {INPUT_DIR}...")
+    all_image_paths = utils.get_image_paths(INPUT_DIR, limit=MAX_IMAGES)
     
-    # Prepare tasks (Benchmark mode: save=False)
-    tasks = [(p, "outputs", False) for p in image_paths]
-    
-    # Varied worker counts as requested
-    # We force specific worker counts [1, 2, 4, 6, 8] REGARDLESS of physical cores
-    # to demonstrate scalability (or lack thereof) even on machines with fewer cores.
-    worker_counts = [1, 2, 4, 6, 8]
-    print(f"Testing Worker Counts: {worker_counts}")
+    if len(all_image_paths) < MAX_IMAGES:
+        print(f"Warning: Only found {len(all_image_paths)} images. Adjusting max test limit.")
+        IMAGE_COUNTS = [c for c in IMAGE_COUNTS if c <= len(all_image_paths)]
+        
+    print(f"Testing Speed across Image Counts: {IMAGE_COUNTS}")
+    print(f"For Worker Counts: {WORKER_COUNTS}")
     print("-" * 60)
     
-    # Data storage for pivoting: results[workers][method] = time
-    benchmark_data = {w: {} for w in worker_counts}
+    # Data Structure: results[worker_count][image_count][method] = time
+    # Flattened list for CSV
+    csv_results = []
     
-    # Baseline (Single Core for reference, not part of comparison columns usually but good for speedup)
-    # We use MP 1-core as the baseline speed
-    print(f"Running Baseline (MP 1 Core) for speedup calc... ", end="", flush=True)
-    start = time.time()
-    method_mp.run_multiprocessing(tasks, 1)
-    t_1 = time.time() - start
-    print(f"Done in {t_1:.4f}s")
+    # Nested Dictionary for Plotting: plot_data[worker_count] = { 'MP': [(img, time), ...], 'CF_Th': ... }
+    plot_data = {w: {'MP': [], 'CF_Proc': [], 'CF_Thread': []} for w in WORKER_COUNTS}
+
+    # 2. EXECUTION LOOP
+    # We loop by Image Count first to minimize list slicing, or by Worker?
+    # Actually, looping by Image Count first is better for progress visibility.
     
-    # Plot data arrays
-    plot_data = {'Multiprocessing': [], 'CF (Threads)': [], 'CF (Process)': []}
-
-    print("\nRunning Tests...")
-    
-    for workers in worker_counts:
-        print(f"\n--- Testing with {workers} Workers ---")
+    for img_count in IMAGE_COUNTS:
+        print(f"\n[ Dataset Size: {img_count} Images ]")
         
-        # 1. Multiprocessing
-        print(f"  > Multiprocessing... ", end="", flush=True)
-        start = time.time()
-        method_mp.run_multiprocessing(tasks, workers)
-        dur = time.time() - start
-        print(f"{dur:.4f}s")
-        benchmark_data[workers]['MP'] = dur
-        plot_data['Multiprocessing'].append((workers, dur))
-
-        # 2. Concurrent Futures (Threads)
-        print(f"  > CF (Threads)...    ", end="", flush=True)
-        start = time.time()
-        method_cf.run(tasks, workers, mode='thread')
-        dur = time.time() - start
-        print(f"{dur:.4f}s")
-        benchmark_data[workers]['CF_Thread'] = dur
-        plot_data['CF (Threads)'].append((workers, dur))
-
-        # 3. Concurrent Futures (Process)
-        print(f"  > CF (Process)...    ", end="", flush=True)
-        start = time.time()
-        method_cf.run(tasks, workers, mode='process')
-        dur = time.time() - start
-        print(f"{dur:.4f}s")
-        benchmark_data[workers]['CF_Process'] = dur
-        plot_data['CF (Process)'].append((workers, dur))
-
-    # Print Side-by-Side Pivot Table
-    print("\n" + "="*80)
-    print(f"{'Workers':<8} | {'MP (s)':<10} | {'CF Proc (s)':<12} | {'CF Thrd (s)':<12} | {'Best Method':<15}")
-    print("-" * 80)
-    
-    csv_rows = []
-    for w in worker_counts:
-        mp = benchmark_data[w].get('MP', 0)
-        cfp = benchmark_data[w].get('CF_Process', 0)
-        cft = benchmark_data[w].get('CF_Thread', 0)
+        # Slice the paths for this iteration
+        current_paths = all_image_paths[:img_count]
+        # Create tasks (No Save)
+        tasks = [(p, "outputs", False) for p in current_paths]
         
-        # Determine Winner
-        times = {'Multiprocessing': mp, 'CF Process': cfp, 'CF Thread': cft}
-        best_method = min(times, key=times.get)
+        print(f"{'Workers':<8} | {'MP (s)':<10} | {'CF Proc (s)':<12} | {'CF Thrd (s)':<12} | {'Best':<10}")
+        print("-" * 65)
         
-        print(f"{w:<8} | {mp:<10.4f} | {cfp:<12.4f} | {cft:<12.4f} | {best_method:<15}")
-        
-        csv_rows.append({
-            'Workers': w,
-            'MP_Time': mp,
-            'CF_Process_Time': cfp,
-            'CF_Thread_Time': cft,
-            'Winner': best_method
-        })
-    print("="*80)
+        for workers in WORKER_COUNTS:
+            # A. Multiprocessing
+            start = time.time()
+            method_mp.run_multiprocessing(tasks, workers)
+            time_mp = time.time() - start
+            
+            # B. CF Threads
+            start = time.time()
+            method_cf.run(tasks, workers, mode='thread')
+            time_cft = time.time() - start
+            
+            # C. CF Process
+            start = time.time()
+            method_cf.run(tasks, workers, mode='process')
+            time_cfp = time.time() - start
+            
+            # Record Data
+            plot_data[workers]['MP'].append((img_count, time_mp))
+            plot_data[workers]['CF_Thread'].append((img_count, time_cft))
+            plot_data[workers]['CF_Proc'].append((img_count, time_cfp))
+            
+            # Determine Winner
+            times = {'MP': time_mp, 'CF_P': time_cfp, 'CF_T': time_cft}
+            best = min(times, key=times.get)
+            
+            print(f"{workers:<8} | {time_mp:<10.4f} | {time_cfp:<12.4f} | {time_cft:<12.4f} | {best:<10}")
+            
+            csv_results.append({
+                "Images": img_count,
+                "Workers": workers,
+                "Method": "Multiprocessing",
+                "Time": time_mp
+            })
+            csv_results.append({
+                "Images": img_count,
+                "Workers": workers,
+                "Method": "CF (Process)",
+                "Time": time_cfp
+            })
+            csv_results.append({
+                "Images": img_count,
+                "Workers": workers,
+                "Method": "CF (Thread)",
+                "Time": time_cft
+            })
 
-    # Save details to CSV (Pivoted format)
-    csv_path = "benchmark_results.csv"
+    # 3. SAVE CSV
+    csv_path = "benchmark_results_scalability.csv"
     with open(csv_path, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=["Workers", "MP_Time", "CF_Process_Time", "CF_Thread_Time", "Winner"])
+        writer = csv.DictWriter(f, fieldnames=["Images", "Workers", "Method", "Time"])
         writer.writeheader()
-        writer.writerows(csv_rows)
+        writer.writerows(csv_results)
+    print(f"\nDetailed results saved to {csv_path}")
+
+    # 4. GENERATE PLOTS (5 Graphs)
+    print("\nGenerating 5 Scalability Plots...")
+    
+    for w in WORKER_COUNTS:
+        plt.figure(figsize=(10, 6))
         
-    print(f"\nResults saved to {csv_path}")
-    
-    # Generate Plot
-    plot_results(plot_data)
-
-def plot_results(data):
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print("Warning: matplotlib not installed. Skipping plot generation.")
-        return
-
-    print("Generating performance plot...")
-    
-    plt.figure(figsize=(10, 6))
-    
-    # Plot 3 Lines
-    # Multiprocessing
-    x_mp, y_mp = zip(*data['Multiprocessing'])
-    plt.plot(x_mp, y_mp, marker='o', label='Multiprocessing (Pool)', linewidth=2)
-    
-    # CF Process
-    x_cfp, y_cfp = zip(*data['CF (Process)'])
-    plt.plot(x_cfp, y_cfp, marker='^', label='Concurrent Futures (Process)', linewidth=2, linestyle='--')
-
-    # CF Threads
-    x_cf, y_cf = zip(*data['CF (Threads)'])
-    plt.plot(x_cf, y_cf, marker='s', label='Concurrent Futures (Threads)', linewidth=2)
-    
-    plt.title('Performance Comparison: MP vs CF(Process) vs CF(Thread)')
-    plt.xlabel('Number of Workers')
-    plt.ylabel('Time Taken (Seconds) [Lower is Better]')
-    plt.grid(True)
-    plt.legend()
-    plt.xticks([1, 2, 4, 6, 8])
-    
-    output_image = "benchmark_plot.png"
-    plt.savefig(output_image)
-    print(f"Plot saved to {output_image}")
+        # Extract X, Y for each method
+        # MP
+        x_mp, y_mp = zip(*plot_data[w]['MP'])
+        plt.plot(x_mp, y_mp, marker='o', label='Multiprocessing', linewidth=2)
+        
+        # CF Process
+        x_cfp, y_cfp = zip(*plot_data[w]['CF_Proc'])
+        plt.plot(x_cfp, y_cfp, marker='^', linestyle='--', label='CF (Process)', linewidth=2)
+        
+        # CF Thread
+        x_cft, y_cft = zip(*plot_data[w]['CF_Thread'])
+        plt.plot(x_cft, y_cft, marker='s', label='CF (Thread)', linewidth=2)
+        
+        plt.title(f'Scalability Analysis: {w} Workers')
+        plt.xlabel('Number of Images')
+        plt.ylabel('Execution Time (seconds)')
+        plt.legend()
+        plt.grid(True)
+        
+        # Save
+        output_dir = "plots"
+        os.makedirs(output_dir, exist_ok=True)
+        filename = os.path.join(output_dir, f"benchmark_plot_{w}worker.png")
+        plt.savefig(filename)
+        print(f"  > Saved {filename}")
+        plt.close() # Close memory
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
