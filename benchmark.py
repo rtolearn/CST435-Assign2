@@ -22,6 +22,8 @@ def run_benchmark_suite():
     tasks = [(p, "outputs", False) for p in image_paths]
     
     # Varied worker counts as requested
+    # We force specific worker counts [2, 4, 6, 8] REGARDLESS of physical cores
+    # to demonstrate scalability (or lack thereof) even on machines with fewer cores.
     worker_counts = [2, 4, 6, 8]
     print(f"Testing Worker Counts: {worker_counts}")
     print("-" * 60)
