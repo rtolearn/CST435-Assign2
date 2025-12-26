@@ -180,6 +180,8 @@ def process_pipeline(image):
         return None
 
     # Pipeline sequence
+    # img = apply_gaussian_blur(image)
+     
     # 0. Custom Python Blur (GIL-locked - favors Processes over Threads)
     img = apply_custom_blur(image)
     
