@@ -6,103 +6,93 @@ import utils
 import method_mp
 import method_cf
 import matplotlib.pyplot as plt
+from collections import defaultdict
 
 def run_benchmark_suite():
-    print("--- Starting Scalability Benchmark Suite ---")
+    print("--- Starting Averaged Benchmark Suite (3 Runs) ---")
     
     # 1. SETUP
     INPUT_DIR = os.path.join("food-101", "food-101", "images")
     
-    # Dimensions to test
-    # IMAGE_COUNTS = [50, 100, 500, 1000]
-    IMAGE_COUNTS = [50]
+    # CONFIGURATION
+    IMAGE_COUNT = 500  # Fixed number as requested
     WORKER_COUNTS = [1, 2, 4, 8]
+    RUNS_PER_CONFIG = 3 # Number of times to repeat each test
     
     # Load Max Images once
-    MAX_IMAGES = max(IMAGE_COUNTS)
-    print(f"Loading {MAX_IMAGES} images cache from {INPUT_DIR}...")
-    all_image_paths = utils.get_image_paths(INPUT_DIR, limit=MAX_IMAGES)
+    print(f"Loading {IMAGE_COUNT} images cache from {INPUT_DIR}...")
+    all_image_paths = utils.get_image_paths(INPUT_DIR, limit=IMAGE_COUNT)
     
-    if len(all_image_paths) < MAX_IMAGES:
-        print(f"Warning: Only found {len(all_image_paths)} images. Adjusting max test limit.")
-        IMAGE_COUNTS = [c for c in IMAGE_COUNTS if c <= len(all_image_paths)]
+    if len(all_image_paths) < IMAGE_COUNT:
+        print(f"Warning: Only found {len(all_image_paths)} images. Adjusting limit.")
+        IMAGE_COUNT = len(all_image_paths)
+    
+    # Slice paths
+    current_paths = all_image_paths[:IMAGE_COUNT]
+    tasks = [(p, "outputs", False) for p in current_paths]
         
-    print(f"Testing Speed across Image Counts: {IMAGE_COUNTS}")
-    print(f"For Worker Counts: {WORKER_COUNTS}")
+    print(f"Testing Speed for {IMAGE_COUNT} Images")
+    print(f"Worker Counts: {WORKER_COUNTS}")
+    print(f"Runs per Config: {RUNS_PER_CONFIG}")
     print("-" * 60)
     
     # Data collection
-    csv_results = []
-    plot_data = {w: {'MP': [], 'CF_Proc': [], 'CF_Thread': []} for w in WORKER_COUNTS}
+    # raw_results stores list of times: raw_results[workers][method] = [t1, t2, t3]
+    raw_results = defaultdict(lambda: defaultdict(list))
+    csv_rows = []
     
     # 2. EXECUTION LOOP
-    for img_count in IMAGE_COUNTS:
-        print(f"\n[ Dataset Size: {img_count} Images ]")
-        
-        # Slice the paths for this iteration
-        current_paths = all_image_paths[:img_count]
-        tasks = [(p, "outputs", False) for p in current_paths]
-        
-        print(f"{'Workers':<8} | {'MP (s)':<10} | {'CF Proc (s)':<12} | {'CF Thrd (s)':<12} | {'Best':<10}")
-        print("-" * 65)
-        
-        for workers in WORKER_COUNTS:
+    print(f"{'Method':<12} | {'Workers':<8} | {'Run':<4} | {'Time (s)':<10}")
+    print("-" * 50)
+
+    for workers in WORKER_COUNTS:
+        for run_idx in range(1, RUNS_PER_CONFIG + 1):
+            
+            # Function to execute and record
+            def execute_method(name, func):
+                start = time.time()
+                func()
+                duration = time.time() - start
+                
+                raw_results[workers][name].append(duration)
+                print(f"{name:<12} | {workers:<8} | {run_idx:<4} | {duration:<10.4f}")
+                
+                csv_rows.append({
+                    "Images": IMAGE_COUNT,
+                    "Workers": workers,
+                    "Method": name,
+                    "Run": run_idx,
+                    "Time": duration
+                })
+
             # A. Multiprocessing
-            start = time.time()
-            method_mp.run_multiprocessing(tasks, workers)
-            time_mp = time.time() - start
+            execute_method("MP", lambda: method_mp.run_multiprocessing(tasks, workers))
             
             # B. CF Process
-            start = time.time()
-            method_cf.run(tasks, workers, mode='process')
-            time_cfp = time.time() - start
+            execute_method("CF_Proc", lambda: method_cf.run(tasks, workers, mode='process'))
             
-            # C. CF Threads
-            start = time.time()
-            method_cf.run(tasks, workers, mode='thread')
-            time_cft = time.time() - start
-            
-            # Record Data
-            plot_data[workers]['MP'].append((img_count, time_mp))
-            plot_data[workers]['CF_Proc'].append((img_count, time_cfp))
-            plot_data[workers]['CF_Thread'].append((img_count, time_cft))
-            
-            # Determine Winner
-            times = {'MP': time_mp, 'CF_P': time_cfp, 'CF_T': time_cft}
-            best = min(times, key=times.get)
-            
-            print(f"{workers:<8} | {time_mp:<10.4f} | {time_cfp:<12.4f} | {time_cft:<12.4f} | {best:<10}")
-            
-            # Append to CSV data
-            csv_results.append({
-                "Images": img_count,
-                "Workers": workers,
-                "Method": "Multiprocessing",
-                "Time": time_mp
-            })
-            csv_results.append({
-                "Images": img_count,
-                "Workers": workers,
-                "Method": "CF (Process)",
-                "Time": time_cfp
-            })
-            csv_results.append({
-                "Images": img_count,
-                "Workers": workers,
-                "Method": "CF (Thread)",
-                "Time": time_cft
-            })
+            # C. CF Thread
+            execute_method("CF_Thread", lambda: method_cf.run(tasks, workers, mode='thread'))
 
-    # 3. SAVE CSV (Overwrite)
-    csv_path = "benchmark_results_scalability.csv"
+    # 3. SAVE CSV (Raw Data)
+    csv_path = "benchmark_results_averaged.csv"
     with open(csv_path, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=["Images", "Workers", "Method", "Time"])
+        writer = csv.DictWriter(f, fieldnames=["Images", "Workers", "Method", "Run", "Time"])
         writer.writeheader()
-        writer.writerows(csv_results)
-    print(f"\nResults saved to {csv_path}")
+        writer.writerows(csv_rows)
+    print(f"\nRaw results saved to {csv_path}")
 
-    # 4. GENERATE PLOTS
-    print("\nGenerating plots...")
+    # 4. CALCULATE AVERAGES
+    # avg_data[method][workers] = avg_time
+    avg_data = defaultdict(dict)
+    
+    for workers, methods in raw_results.items():
+        for method, times in methods.items():
+            avg = sum(times) / len(times)
+            avg_data[method][workers] = avg
+
+    # 5. GENERATE 3 SPECIFIC PLOTS
+    print("\nGenerating 3 Analysis Plots...")
     output_dir = "plots"
     os.makedirs(output_dir, exist_ok=True)
     
@@ -112,37 +102,82 @@ def run_benchmark_suite():
         'CF_Thread': {'marker': 's', 'linestyle': '-', 'label': 'CF (Thread)', 'color': 'green'}
     }
     
-    for w in WORKER_COUNTS:
-        plt.figure(figsize=(10, 6))
+    # PLOT 1: Execution Time vs Workers
+    plt.figure(figsize=(10, 6))
+    for method in styles.keys():
+        workers_list = sorted(avg_data[method].keys())
+        times_list = [avg_data[method][w] for w in workers_list]
+        st = styles[method]
+        plt.plot(workers_list, times_list, marker=st['marker'], linestyle=st['linestyle'], 
+                 label=st['label'], color=st['color'], linewidth=2)
+                 
+    plt.title(f'Execution Time vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
+    plt.xlabel('Number of Workers', fontsize=12)
+    plt.ylabel('Average Execution Time (s)', fontsize=12)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.xticks(WORKER_COUNTS)
+    plt.savefig(os.path.join(output_dir, "plot_time_vs_workers.png"))
+    print("  > Saved plots/plot_time_vs_workers.png")
+    plt.close()
+
+    # PLOT 2: Speedup vs Workers
+    plt.figure(figsize=(10, 6))
+    for method in styles.keys():
+        workers_list = sorted(avg_data[method].keys())
+        # T(1) is baseline
+        t_1 = avg_data[method].get(1)
+        if not t_1: continue
         
-        for method_key, points in plot_data[w].items():
-            if not points:
-                continue
-            
-            points.sort(key=lambda x: x[0])
-            x_vals, y_vals = zip(*points)
-            style = styles[method_key]
-            
-            plt.plot(x_vals, y_vals, 
-                     marker=style['marker'], 
-                     linestyle=style['linestyle'],
-                     label=style['label'],
-                     color=style['color'],
-                     linewidth=2)
-        
-        plt.title(f'Execution Time: {w} Workers', fontsize=14, fontweight='bold')
-        plt.xlabel('Number of Images', fontsize=12)
-        plt.ylabel('Execution Time (seconds)', fontsize=12)
-        plt.legend(fontsize=10)
-        plt.grid(True, alpha=0.3)
-        plt.xticks(IMAGE_COUNTS)
-        
-        filename = os.path.join(output_dir, f"time_vs_images_{w}worker.png")
-        plt.savefig(filename, dpi=150, bbox_inches='tight')
-        print(f"  > Saved {filename}")
-        plt.close()
+        speedups = [t_1 / avg_data[method][w] for w in workers_list]
+        st = styles[method]
+        plt.plot(workers_list, speedups, marker=st['marker'], linestyle=st['linestyle'], 
+                 label=st['label'], color=st['color'], linewidth=2)
+
+    # Ideal Line
+    plt.plot([1, 8], [1, 8], 'k--', label='Ideal Linear', alpha=0.5)
     
-    print("\n✓ Benchmark complete!")
+    plt.title(f'Speedup vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
+    plt.xlabel('Number of Workers', fontsize=12)
+    plt.ylabel('Speedup Factor', fontsize=12)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.xticks(WORKER_COUNTS)
+    plt.savefig(os.path.join(output_dir, "plot_speedup.png"))
+    print("  > Saved plots/plot_speedup.png")
+    plt.close()
+
+    # PLOT 3: Efficiency vs Workers
+    plt.figure(figsize=(10, 6))
+    for method in styles.keys():
+        workers_list = sorted(avg_data[method].keys())
+        t_1 = avg_data[method].get(1)
+        if not t_1: continue
+        
+        efficiencies = []
+        for w in workers_list:
+            speedup = t_1 / avg_data[method][w]
+            eff = (speedup / w) * 100
+            efficiencies.append(eff)
+            
+        st = styles[method]
+        plt.plot(workers_list, efficiencies, marker=st['marker'], linestyle=st['linestyle'], 
+                 label=st['label'], color=st['color'], linewidth=2)
+
+    plt.axhline(y=100, color='k', linestyle='--', label='Ideal (100%)', alpha=0.5)
+    
+    plt.title(f'Efficiency vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
+    plt.xlabel('Number of Workers', fontsize=12)
+    plt.ylabel('Efficiency (%)', fontsize=12)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.xticks(WORKER_COUNTS)
+    plt.ylim(0, 110)
+    plt.savefig(os.path.join(output_dir, "plot_efficiency.png"))
+    print("  > Saved plots/plot_efficiency.png")
+    plt.close()
+
+    print("\n✓ Averaged Benchmark Complete!")
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
