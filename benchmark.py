@@ -3,6 +3,7 @@ import csv
 import multiprocessing
 import os
 import argparse
+import numpy as np
 import utils
 import method_mp
 import method_cf
@@ -239,34 +240,48 @@ def run_benchmark_suite(IMAGE_COUNT, WORKER_COUNTS, RUNS_PER_CONFIG, ENABLE_MULT
         output_dir = "plots"
         os.makedirs(output_dir, exist_ok=True)
         
-        styles = {
-            'MP': {'marker': 'o', 'linestyle': '-', 'label': 'Multiprocessing', 'color': 'blue'},
-            'CF_Proc': {'marker': '^', 'linestyle': '--', 'label': 'CF (Process)', 'color': 'orange'},
-            'CF_Thread': {'marker': 's', 'linestyle': '-', 'label': 'CF (Thread)', 'color': 'green'}
+        colors = {
+            'MP': 'blue',
+            'CF_Proc': 'orange',
+            'CF_Thread': 'green'
+        }
+        
+        labels = {
+            'MP': 'Multiprocessing',
+            'CF_Proc': 'CF (Process)',
+            'CF_Thread': 'CF (Thread)'
         }
     
-        # PLOT 1: Execution Time vs Workers
-        plt.figure(figsize=(10, 6))
-        for method in styles.keys():
+        # PLOT 1: Execution Time vs Workers (BAR CHART)
+        plt.figure(figsize=(12, 7))
+        x = np.arange(len(WORKER_COUNTS))
+        width = 0.25
+        
+        for idx, method in enumerate(['MP', 'CF_Proc', 'CF_Thread']):
             workers_list = sorted(avg_data[method].keys())
             times_list = [avg_data[method][w] for w in workers_list]
-            st = styles[method]
-            plt.plot(workers_list, times_list, marker=st['marker'], linestyle=st['linestyle'], 
-                     label=st['label'], color=st['color'], linewidth=2)
-                     
+            plt.bar(x + idx*width, times_list, width, label=labels[method], color=colors[method], alpha=0.8)
+        
         plt.title(f'Execution Time vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
         plt.xlabel('Number of Workers', fontsize=12)
         plt.ylabel('Average Execution Time (s)', fontsize=12)
+        plt.xticks(x + width, [f'Serial' if w == 1 else str(w) for w in WORKER_COUNTS])
         plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.xticks(WORKER_COUNTS)
-        plt.savefig(os.path.join(output_dir, "plot_time_vs_workers.png"))
+        plt.grid(True, alpha=0.3, axis='y')
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, "plot_time_vs_workers.png"), dpi=300)
         print("  > Saved plots/plot_time_vs_workers.png")
         plt.close()
 
-        # PLOT 2: Speedup vs Workers
-        plt.figure(figsize=(10, 6))
-        for method in styles.keys():
+        # PLOT 2: Speedup vs Workers (LINE CHART - Enhanced)
+        plt.figure(figsize=(12, 7))
+        styles = {
+            'MP': {'marker': 'o', 'linestyle': '-', 'markersize': 8},
+            'CF_Proc': {'marker': '^', 'linestyle': '--', 'markersize': 8},
+            'CF_Thread': {'marker': 's', 'linestyle': '-.', 'markersize': 8}
+        }
+        
+        for method in ['MP', 'CF_Proc', 'CF_Thread']:
             workers_list = sorted(avg_data[method].keys())
             # T(1) is baseline
             t_1 = avg_data[method].get(1)
@@ -276,27 +291,31 @@ def run_benchmark_suite(IMAGE_COUNT, WORKER_COUNTS, RUNS_PER_CONFIG, ENABLE_MULT
             speedups = [t_1 / avg_data[method][w] for w in workers_list]
             st = styles[method]
             plt.plot(workers_list, speedups, marker=st['marker'], linestyle=st['linestyle'], 
-                     label=st['label'], color=st['color'], linewidth=2)
+                     label=labels[method], color=colors[method], linewidth=2.5, markersize=st['markersize'])
 
         # Ideal Line
-        plt.plot([1, 8], [1, 8], 'k--', label='Ideal Linear', alpha=0.5)
+        plt.plot([1, max(WORKER_COUNTS)], [1, max(WORKER_COUNTS)], 'k--', label='Ideal Linear', alpha=0.6, linewidth=2)
         
         plt.title(f'Speedup vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
         plt.xlabel('Number of Workers', fontsize=12)
         plt.ylabel('Speedup Factor', fontsize=12)
-        plt.legend()
+        plt.legend(fontsize=11)
         plt.grid(True, alpha=0.3)
         plt.xticks(WORKER_COUNTS)
-        plt.savefig(os.path.join(output_dir, "plot_speedup.png"))
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, "plot_speedup.png"), dpi=300)
         print("  > Saved plots/plot_speedup.png")
         plt.close()
 
-        # PLOT 3: Efficiency vs Workers
-        plt.figure(figsize=(10, 6))
-        for method in styles.keys():
+        # PLOT 3: Efficiency vs Workers (BAR CHART)
+        plt.figure(figsize=(12, 7))
+        x = np.arange(len(WORKER_COUNTS))
+        width = 0.25
+        
+        for idx, method in enumerate(['MP', 'CF_Proc', 'CF_Thread']):
             workers_list = sorted(avg_data[method].keys())
             t_1 = avg_data[method].get(1)
-            if not t_1: 
+            if not t_1:
                 continue
             
             efficiencies = []
@@ -304,20 +323,20 @@ def run_benchmark_suite(IMAGE_COUNT, WORKER_COUNTS, RUNS_PER_CONFIG, ENABLE_MULT
                 speedup = t_1 / avg_data[method][w]
                 eff = (speedup / w) * 100
                 efficiencies.append(eff)
-                
-            st = styles[method]
-            plt.plot(workers_list, efficiencies, marker=st['marker'], linestyle=st['linestyle'], 
-                     label=st['label'], color=st['color'], linewidth=2)
+            
+            plt.bar(x + idx*width, efficiencies, width, label=labels[method], color=colors[method], alpha=0.8)
 
-        plt.axhline(y=100, color='k', linestyle='--', label='Ideal (100%)', alpha=0.5)
+        plt.axhline(y=100, color='k', linestyle='--', label='Ideal (100%)', alpha=0.6, linewidth=2)
         
         plt.title(f'Efficiency vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
         plt.xlabel('Number of Workers', fontsize=12)
         plt.ylabel('Efficiency (%)', fontsize=12)
+        plt.xticks(x + width, [f'Serial' if w == 1 else str(w) for w in WORKER_COUNTS])
         plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.xticks(WORKER_COUNTS)
-        plt.ylim(0, 110)
+        plt.grid(True, alpha=0.3, axis='y')
+        plt.ylim(0, 120)
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, "plot_efficiency.png"), dpi=300)
         plt.savefig(os.path.join(output_dir, "plot_efficiency.png"))
         print("  > Saved plots/plot_efficiency.png")
         plt.close()
