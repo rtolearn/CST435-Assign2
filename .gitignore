@@ -14,6 +14,7 @@ __MACOSX/
 debug_steps/
 outputs/
 output_images/
+images/
 input_images/class_subset/*
 benchmark_results_averaged.csv
 benchmark_plot.png
