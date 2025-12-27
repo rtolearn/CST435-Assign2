@@ -15,7 +15,7 @@ debug_steps/
 outputs/
 output_images/
 input_images/class_subset/*
-benchmark_results.csv
+benchmark_results_averaged.csv
 benchmark_plot.png
 
 # Temporary test outputs
