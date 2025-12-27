@@ -1,0 +1,5 @@
+Workers,Run,MP,CF_Proc,CF_Thread,Best_Method
+1,Run1,23.8323,24.2713,24.4321,MP
+2,Run1,14.1258,13.9719,13.7590,CF_Thread
+4,Run1,9.2973,9.3783,8.7706,CF_Thread
+8,Run1,8.3878,8.8328,7.1445,CF_Thread

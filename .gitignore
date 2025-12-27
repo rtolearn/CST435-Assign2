@@ -1,18 +1,25 @@
-# Ignore python cache files
+# Python
 __pycache__/
 *.pyc
 venv/
+.env
 
-# Ignore the huge images (IMPORTANT)
-# Ignore everything INSIDE class_subset, but not the folder itself
-input_images/class_subset/*
-
-# (Optional) If you want to force git to keep the empty folder structure
-!input_images/class_subset/.gitkeep
+# Data and Outputs
 chicken_curry/
-debug_steps/
-output_images/*
-outputs/
+food-101/
+*.zip
+food-101.zip
+__MACOSX/
 
-# Keep the gitkeep files so folders are tracked (optional trick)
-!input_images/.gitkeep
+debug_steps/
+outputs/
+output_images/
+input_images/class_subset/*
+benchmark_results_averaged.csv
+benchmark_plot.png
+
+# Temporary test outputs
+test_output.jpg
+test_output_phase1.jpg
+*_output*.jpg
+plots/
