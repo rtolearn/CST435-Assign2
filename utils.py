@@ -119,40 +119,6 @@ def apply_sharpening(image):
     kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
     return cv2.filter2D(image, -1, kernel)
 
-def apply_custom_blur(image):
-    """
-    CPU-intensive pure Python blur - demonstrates GIL bottleneck.
-    This uses pure Python loops (no NumPy/OpenCV vectorization),
-    forcing the Python interpreter to hold the GIL.
-    """
-    height, width = image.shape[:2]
-    result = image.copy()
-    
-    # Pure Python nested loop (slow, GIL-locked)
-    # Only process a sample to keep it reasonably fast
-    step = 3  # Process every 3rd pixel for speed
-    
-    if len(image.shape) == 3:
-        # Color image - 3x3 averaging across RGB channels
-        for y in range(1, height-1, step):
-            for x in range(1, width-1, step):
-                for c in range(3):  # RGB channels
-                    # 3x3 neighborhood average
-                    total = (int(image[y-1, x-1, c]) + int(image[y-1, x, c]) + int(image[y-1, x+1, c]) +
-                             int(image[y, x-1, c])   + int(image[y, x, c])   + int(image[y, x+1, c]) +
-                             int(image[y+1, x-1, c]) + int(image[y+1, x, c]) + int(image[y+1, x+1, c]))
-                    result[y, x, c] = total // 9
-    else:
-        # Grayscale image
-        for y in range(1, height-1, step):
-            for x in range(1, width-1, step):
-                total = (int(image[y-1, x-1]) + int(image[y-1, x]) + int(image[y-1, x+1]) +
-                         int(image[y, x-1])   + int(image[y, x])   + int(image[y, x+1]) +
-                         int(image[y+1, x-1]) + int(image[y+1, x]) + int(image[y+1, x+1]))
-                result[y, x] = total // 9
-    
-    return result
-
 def adjust_brightness(image, value=60):
     """Filter 5: Brightness Adjustment (+60)"""
     if len(image.shape) == 2: # Grayscale brightness
@@ -182,7 +148,6 @@ def process_pipeline(image):
     # Pipeline sequence
     
     # 0. Gaussian Blur
-    # img = apply_custom_blur(image) # 0. Custom Python Blur (GIL-locked - favors Processes over Threads)
     img = apply_gaussian_blur(image)
     
     # 1. Adjust Brightness
