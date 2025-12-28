@@ -89,7 +89,7 @@ def main():
     print("=" * 70)
     
     # Configuration
-    IMAGE_COUNTS = [1, 5, 10, 25, 50, 100, 500, 1000, 1500, 2000, 3000]
+    IMAGE_COUNTS = [1, 5, 10, 25, 50, 100, 500, 1000, 1500, 3000, 5000, 7500, 10000]
     WORKERS = 4  # Use 4 workers for fair comparison
     
     print(f"\nConfiguration:")
