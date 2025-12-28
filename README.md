@@ -164,6 +164,10 @@ python main.py --count 100 --workers 1 2 4 8 --runs 3 --multi-run
 Command:
 
 Install necessary tools: sudo apt update && sudo apt install -y git python3-pip
+pip install matplotlib numpy
+sudo apt-get update
+sudo apt-get install python3-matplotlib python3-numpy -y
+sudo apt-get install unzip -y
 unzip libgl1 libglib2.0-0
 
 Clone: git clone https://github.com/rtolearn/CST435-Assign2.git
@@ -176,6 +180,7 @@ After cloning:
 Import files (zip -> unzip)
 
 - mkdir -p images
+- ls -lh (check if the zip file is import)
 - mv ~/images.zip ~/CST435-Assign2/images/
 - cd images
 - unzip images.zip

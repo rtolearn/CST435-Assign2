@@ -1,11 +1,7 @@
 """
-Image Count Optimizer
-Tests different image counts (50 to 3000) to find the optimal dataset size
-for the CST435 assignment. Compares all 4 execution modes:
-- Sequential (1 worker baseline)
-- Multiprocessing (MP)
-- Concurrent Futures Process (CF_Proc)
-- Concurrent Futures Thread (CF_Thread)
+Image Count Saturation Tester
+Tests different image counts (up to 10,000) with 8 Workers.
+Generates a "Speedup vs Dataset Size" graph to identify the saturation point.
 """
 
 import time
@@ -19,208 +15,174 @@ import utils
 import method_mp
 import method_cf
 
+def measure_time(func, *args, **kwargs):
+    """Helper to measure execution time of a function."""
+    start = time.time()
+    func(*args, **kwargs)
+    return time.time() - start
 
-def test_image_count(image_count, workers=4):
+def test_image_count(image_count, workers):
     """
-    Test a specific image count with all 4 execution methods.
-    
-    Args:
-        image_count: Number of images to test
-        workers: Number of workers to use (default: 4)
-    
-    Returns:
-        dict: Results {method: execution_time}
+    Test a specific image count with all 3 parallel methods + Serial.
     """
     INPUT_DIR = "images"
     
-    # Load images
+    # 1. Load images
     print(f"  Loading {image_count} images...", end="", flush=True)
     all_image_paths = utils.get_image_paths(INPUT_DIR, limit=image_count)
+    actual_count = len(all_image_paths)
     
-    if len(all_image_paths) < image_count:
-        actual_count = len(all_image_paths)
-        print(f" (only {actual_count} available)")
-        image_count = actual_count
+    if actual_count < image_count:
+        print(f" (Limited to {actual_count})")
     else:
         print(" Done!")
-    
-    # Slice paths and create tasks
-    current_paths = all_image_paths[:image_count]
-    tasks = [(p, "outputs", False) for p in current_paths]
+
+    # 2. Prepare Tasks
+    # We use a dummy output folder and DISABLE saving (False) to measure pure CPU performance
+    current_paths = all_image_paths[:actual_count]
+    tasks = [(p, "outputs_test", False) for p in current_paths]
     
     results = {}
     
-    # Test Sequential (1 worker)
-    print(f"    Testing Sequential (1 worker)...", end="", flush=True)
-    start = time.time()
-    method_mp.run_multiprocessing(tasks, 1)
-    results['Sequential'] = time.time() - start
-    print(f" {results['Sequential']:.4f}s")
+    # 3. Run Benchmarks
+    print(f"    Running: ", end="", flush=True)
     
-    # Test Multiprocessing
-    print(f"    Testing Multiprocessing ({workers} workers)...", end="", flush=True)
-    start = time.time()
-    method_mp.run_multiprocessing(tasks, workers)
-    results['MP'] = time.time() - start
-    print(f" {results['MP']:.4f}s")
+    # A. Sequential (1 Worker) - The Baseline
+    print("Serial...", end="", flush=True)
+    results['Sequential'] = measure_time(method_mp.run_multiprocessing, tasks, 1)
     
-    # Test CF Process
-    print(f"    Testing CF_Proc ({workers} workers)...", end="", flush=True)
-    start = time.time()
-    method_cf.run(tasks, workers, mode='process')
-    results['CF_Proc'] = time.time() - start
-    print(f" {results['CF_Proc']:.4f}s")
+    # B. Multiprocessing
+    print(f" MP({workers})...", end="", flush=True)
+    results['MP'] = measure_time(method_mp.run_multiprocessing, tasks, workers)
     
-    # Test CF Thread
-    print(f"    Testing CF_Thread ({workers} workers)...", end="", flush=True)
-    start = time.time()
-    method_cf.run(tasks, workers, mode='thread')
-    results['CF_Thread'] = time.time() - start
-    print(f" {results['CF_Thread']:.4f}s")
+    # C. CF Process
+    print(f" CF_Proc({workers})...", end="", flush=True)
+    results['CF_Proc'] = measure_time(method_cf.run, tasks, workers, mode='process')
     
-    return image_count, results
-
+    # D. CF Thread
+    print(f" CF_Thread({workers})...", end="", flush=True)
+    results['CF_Thread'] = measure_time(method_cf.run, tasks, workers, mode='thread')
+    
+    print(" Done.")
+    return actual_count, results
 
 def main():
-    """Main execution: Test different image counts and generate analysis."""
-    
     print("=" * 70)
-    print("IMAGE COUNT OPTIMIZER - Finding Optimal Dataset Size")
+    print("SATURATION TEST: Finding the Optimal Dataset Size")
     print("=" * 70)
     
-    # Configuration
-    IMAGE_COUNTS = [1, 5, 10, 25, 50, 100, 500, 1000, 1500, 3000, 5000, 7500, 10000]
-    WORKERS = 4  # Use 4 workers for fair comparison
+    # --- CONFIGURATION ---
+    TARGET_COUNTS = [100, 500, 1000, 2000, 4000, 6000, 8000, 10000]
+    WORKERS = 8  
     
-    print(f"\nConfiguration:")
-    print(f"  Image Counts: {IMAGE_COUNTS}")
+    print(f"Configuration:")
+    print(f"  Targets: {TARGET_COUNTS}")
     print(f"  Workers: {WORKERS}")
-    print(f"  Methods: Sequential, MP, CF_Proc, CF_Thread")
-    print("\n" + "=" * 70)
+    print("-" * 70)
     
-    # Collect results
-    all_results = defaultdict(lambda: defaultdict(float))
-    csv_rows = []
+    all_results = {}
+    max_images_reached = False
     
-    # Test each image count
-    for img_count in IMAGE_COUNTS:
-        print(f"\nTesting with {img_count} images:")
-        
+    # --- TEST LOOP ---
+    for target in TARGET_COUNTS:
+        if max_images_reached:
+            break
+            
+        print(f"\nTest Target: {target}")
         try:
-            actual_count, results = test_image_count(img_count, WORKERS)
+            actual, times = test_image_count(target, WORKERS)
+            all_results[actual] = times
             
-            # Store results
-            for method, exec_time in results.items():
-                all_results[actual_count][method] = exec_time
-                csv_rows.append({
-                    'Image_Count': actual_count,
-                    'Method': method,
-                    'Time_Seconds': exec_time
-                })
-            
+            if actual < target:
+                print(f"  ! Max dataset size reached ({actual}). Stopping further tests.")
+                max_images_reached = True
+                
         except Exception as e:
             print(f"  ERROR: {e}")
             continue
-    
-    # Save to CSV
-    csv_path = "image_count_analysis.csv"
-    with open(csv_path, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['Image_Count', 'Method', 'Time_Seconds'])
-        writer.writeheader()
-        writer.writerows(csv_rows)
-    
-    print(f"\n{'=' * 70}")
-    print(f"Results saved to {csv_path}")
-    print(f"{'=' * 70}\n")
-    
-    # Generate summary table
-    print("SUMMARY: Execution Time (seconds)")
-    print("-" * 80)
-    print(f"{'Images':<12} {'Sequential':<15} {'MP':<15} {'CF_Proc':<15} {'CF_Thread':<15}")
-    print("-" * 80)
-    
-    for img_count in sorted(all_results.keys()):
-        row = f"{img_count:<12}"
-        for method in ['Sequential', 'MP', 'CF_Proc', 'CF_Thread']:
-            time_val = all_results[img_count].get(method, 0)
-            row += f"{time_val:<15.4f}"
-        print(row)
-    
-    print("-" * 80)
-    
-    # Identify best and worst cases
-    print("\nANALYSIS:")
-    print("-" * 80)
-    
-    for img_count in sorted(all_results.keys()):
-        methods_times = all_results[img_count]
-        if methods_times:
-            best_method = min(methods_times, key=methods_times.get)
-            best_time = methods_times[best_method]
-            print(f"  {img_count} images: Best = {best_method} ({best_time:.4f}s)")
-    
-    print("\n" + "=" * 70)
-    print("GENERATING PLOT...")
-    print("=" * 70)
-    
-    # Generate plot
-    plt.figure(figsize=(14, 8))
-    
-    colors = {
-        'Sequential': 'red',
-        'MP': 'blue',
-        'CF_Proc': 'orange',
-        'CF_Thread': 'green'
-    }
-    
-    markers = {
-        'Sequential': 'o',
-        'MP': '^',
-        'CF_Proc': 's',
-        'CF_Thread': 'D'
-    }
-    
-    # Plot each method
-    for method in ['Sequential', 'MP', 'CF_Proc', 'CF_Thread']:
-        image_counts = sorted(all_results.keys())
-        times = [all_results[img][method] for img in image_counts]
-        
-        plt.plot(image_counts, times, 
-                color=colors[method], 
-                label=method, 
-                linewidth=2.5)
-    
-    plt.title('Execution Time vs Image Count (4 Workers)', fontsize=16, fontweight='bold')
-    plt.xlabel('Number of Images', fontsize=13)
-    plt.ylabel('Execution Time (seconds)', fontsize=13)
-    plt.legend(fontsize=12, loc='upper left')
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    
-    output_dir = "plots"
-    os.makedirs(output_dir, exist_ok=True)
-    plot_path = os.path.join(output_dir, "image_count_analysis.png")
-    plt.savefig(plot_path, dpi=300)
-    print(f"✓ Plot saved to {plot_path}")
-    plt.close()
-    
-    # Recommendations
-    print("\n" + "=" * 70)
-    print("RECOMMENDATIONS FOR ASSIGNMENT:")
-    print("=" * 70)
-    print("""
-    Choose an image count that:
-    1. Shows clear speedup differences between methods
-    2. Runs in reasonable time (<2 minutes per test)
-    3. Uses enough images to be statistically meaningful (>500)
-    
-    Suggested options:
-    - Quick testing: 500 images (fast feedback)
-    - Balanced: 1000 images (good analysis + reasonable time)
-    - Thorough: 2000+ images (comprehensive metrics)
-    """)
-    print("=" * 70)
 
+    # --- SAVE RAW DATA TO CSV ---
+    csv_path = "saturation_results.csv"
+    with open(csv_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Image_Count', 'Method', 'Time_Seconds'])
+        for count, times in all_results.items():
+            for method, t in times.items():
+                writer.writerow([count, method, t])
+    print(f"\nSaved raw data to {csv_path}")
+
+    # --- PRINT SUMMARY TABLE ---
+    print("\n" + "=" * 90)
+    print(f"SUMMARY (Speedup based on MP vs Serial)")
+    print("-" * 90)
+    print(f"{'Images':<10} | {'Serial (s)':<12} | {'MP (s)':<12} | {'MP Speedup':<12} | {'Status':<15}")
+    print("-" * 90)
+    
+    counts = sorted(all_results.keys())
+    previous_speedup = 0
+    
+    for count in counts:
+        t_serial = all_results[count]['Sequential']
+        t_mp = all_results[count]['MP']
+        
+        # Calculate Speedup Formula: Serial / Parallel
+        speedup = t_serial / t_mp if t_mp > 0 else 0
+        
+        diff = abs(speedup - previous_speedup)
+        
+        if count == counts[0]:
+            status = "Baseline"
+        elif diff < 0.05:
+            status = "SATURATED (Flat)"
+        elif speedup > previous_speedup:
+            status = "Improving"
+        else:
+            status = "Regression"
+            
+        previous_speedup = speedup
+        print(f"{count:<10} | {t_serial:<12.4f} | {t_mp:<12.4f} | {speedup:<12.2f}x | {status:<15}")
+    
+    print("-" * 90)
+
+    # --- GENERATE SPEEDUP PLOT ---
+    print("\nGenerating Speedup Plot...")
+    plt.figure(figsize=(12, 7))
+    
+    # We only plot the parallel methods (Speedup relative to Serial)
+    parallel_methods = ['MP', 'CF_Proc', 'CF_Thread']
+    colors = {'MP': 'blue', 'CF_Proc': 'orange', 'CF_Thread': 'green'}
+    markers = {'MP': '^', 'CF_Proc': 's', 'CF_Thread': 'D'}
+    
+    x_vals = sorted(all_results.keys())
+    
+    for method in parallel_methods:
+        # Calculate Speedup list for this method
+        # Speedup = Serial_Time / Method_Time
+        y_speedups = []
+        for count in x_vals:
+            t_serial = all_results[count]['Sequential']
+            t_parallel = all_results[count][method]
+            val = t_serial / t_parallel if t_parallel > 0 else 0
+            y_speedups.append(val)
+            
+        plt.plot(x_vals, y_speedups, marker=markers[method], label=method, color=colors[method], linewidth=2.5)
+
+    # Plot Ideal Line (y = Workers)? No, usually too high.
+    # Let's plot the "Serial Baseline" at y=1 for reference
+    plt.axhline(y=1, color='red', linestyle='--', label='Serial Baseline (1.0x)', alpha=0.7)
+
+    plt.title(f'Speedup Ratio vs Dataset Size ({WORKERS} Workers)', fontsize=14, fontweight='bold')
+    plt.xlabel('Number of Images (Dataset Size)', fontsize=12)
+    plt.ylabel('Speedup Factor (Higher is Better)', fontsize=12)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Save
+    os.makedirs("plots", exist_ok=True)
+    plot_path = "plots/plot_saturation_speedup.png"
+    plt.savefig(plot_path, dpi=300)
+    print(f"✓ Speedup Graph saved to {plot_path}")
+    print("=" * 90)
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
