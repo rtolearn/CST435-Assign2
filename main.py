@@ -19,19 +19,21 @@ def run_benchmark_suite(IMAGE_COUNT, WORKER_COUNTS, RUNS_PER_CONFIG, GENERATE_PL
     if SAVE_IMAGES:
         BASE_OUT = "output"
         MP_OUT = os.path.join(BASE_OUT, "mp", "images")
-        CF_OUT = os.path.join(BASE_OUT, "cf", "images")
+        CF_PROC_OUT = os.path.join(BASE_OUT, "cf_proc", "images")   # <--- Separate
+        CF_THREAD_OUT = os.path.join(BASE_OUT, "cf_thread", "images")
         BENCH_OUT = os.path.join(BASE_OUT, "benchmark")
         
         # Create directories
-        for folder in [MP_OUT, CF_OUT, BENCH_OUT]:
+        for folder in [MP_OUT, CF_PROC_OUT, CF_THREAD_OUT, BENCH_OUT]:
             os.makedirs(folder, exist_ok=True)
             
         print(f"Saving Enabled: Outputting to '{BASE_OUT}/'")
         plot_output_dir = BENCH_OUT  # Plots go to output/benchmark
     else:
         # Default behavior (No saving)
-        MP_OUT = "outputs" # Dummy path
-        CF_OUT = "outputs" # Dummy path
+        MP_OUT = "outputs" 
+        CF_PROC_OUT = "outputs"   # <--- Dummy path
+        CF_THREAD_OUT = "outputs"
         plot_output_dir = "plots" # Default plot folder
         if GENERATE_PLOTS:
             os.makedirs(plot_output_dir, exist_ok=True)
@@ -49,7 +51,8 @@ def run_benchmark_suite(IMAGE_COUNT, WORKER_COUNTS, RUNS_PER_CONFIG, GENERATE_PL
 
     # --- CREATE SEPARATE TASK LISTS ---
     mp_tasks = [(p, MP_OUT, SAVE_IMAGES) for p in current_paths]
-    cf_tasks = [(p, CF_OUT, SAVE_IMAGES) for p in current_paths]
+    cf_proc_tasks = [(p, CF_PROC_OUT, SAVE_IMAGES) for p in current_paths]     # <--- New List
+    cf_thread_tasks = [(p, CF_THREAD_OUT, SAVE_IMAGES) for p in current_paths] # <--- New List
 
     print(f"Configuration:")
     print(f"  Images:       {IMAGE_COUNT}")
@@ -78,22 +81,24 @@ def run_benchmark_suite(IMAGE_COUNT, WORKER_COUNTS, RUNS_PER_CONFIG, GENERATE_PL
             
             # 1. Multiprocessing
             start = time.time()
-            method_mp.run_multiprocessing(mp_tasks, workers)
+            method_mp.run_multiprocessing(mp_tasks, workers)  # Correct
             dur_mp = time.time() - start
             raw_results[workers]["MP"].append(dur_mp)
             
             # 2. CF Process
             start = time.time()
-            method_cf.run(cf_tasks, workers, mode='process')
+            # CHANGE: Use 'cf_proc_tasks'
+            method_cf.run(cf_proc_tasks, workers, mode='process') 
             dur_proc = time.time() - start
             raw_results[workers]["CF_Proc"].append(dur_proc)
             
             # 3. CF Thread
             start = time.time()
-            method_cf.run(cf_tasks, workers, mode='thread')
+            # CHANGE: Use 'cf_thread_tasks'
+            method_cf.run(cf_thread_tasks, workers, mode='thread')
             dur_thread = time.time() - start
             raw_results[workers]["CF_Thread"].append(dur_thread)
-
+            
             # --- PRINT VISUAL BLOCK ---
             print(f"{'':<10} | {'MP':<12} | {dur_mp:<10.4f}")
             print(f"{worker_label:<10} | {'CF_Proc':<12} | {dur_proc:<10.4f}")

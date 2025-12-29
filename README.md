@@ -1,11 +1,23 @@
 # CST435 Assignment 2: Parallel Image Processing System
 
 **Course**: CST435: Parallel and Cloud Computing  
- **Assignment**: Assignment 2 - Parallel Image Processing on GCP
+**Assignment**: Assignment 2 - Parallel Image Processing on GCP
 
 ---
 
 ## 1. Project Overview
+- images
+  - imageFolder 1
+  - imageFolder 2
+  - imageFolder 3
+
+- output
+- plot
+- find_optimal_image_count.py
+- main.py
+- method_cf.py
+- method_mp.py
+- utils.py
 
 This project implements a high-performance parallel image processing system
 capable of filtering thousands of images using multiple CPU cores. It compares
@@ -143,21 +155,11 @@ Every image goes through this exact sequence (defined in `utils.py`):
 5.  **Grayscale**: Luminance conversion.
 6.  **Sobel Edge Detection**: Gradient calculation.
 
-
-
-
-
-
-
-
-
-
-
-
-
 ## 4. Command to run the code:
 
-python main.py --count 100 --workers 1 2 4 8 --runs 3 --multi-run
+python main.py --count 10 --workers 1 2 4 8 --runs 3 --multi-run --save
+
+python main.py --count 10 --workers 1 2 4 8 --runs 3 --multi-run
 
 ## 5. Command used in Google Cloud Platform
 
