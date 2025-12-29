@@ -112,7 +112,6 @@ def process_pipeline(image):
     # Pipeline sequence
     img = apply_gaussian_blur(image)
     img = adjust_brightness(img)
-    img = apply_gaussian_blur(img)
     img = apply_sharpening(img)
     img = apply_grayscale(img)
     final_result = apply_sobel_edge_detection(img)
