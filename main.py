@@ -188,19 +188,17 @@ def generate_plots(IMAGE_COUNT, WORKER_COUNTS, avg_data, output_dir):
 
     # PLOT 1: Execution Time
     plt.figure(figsize=(10, 6))
-    x = np.arange(len(WORKER_COUNTS))
-    width = 0.25
-    for idx, method in enumerate(['MP', 'CF_Proc', 'CF_Thread']):
+    for method in ['MP', 'CF_Proc', 'CF_Thread']:
         workers_list = sorted(avg_data[method].keys())
         times_list = [avg_data[method][w] for w in workers_list]
-        plt.bar(x + idx*width, times_list, width, label=labels[method], color=colors[method], alpha=0.8)
+        plt.plot(workers_list, times_list, marker='o', label=labels[method], color=colors[method], linewidth=2)
     
-    plt.title(f'Execution Time vs Workers ({IMAGE_COUNT} Images)')
-    plt.xlabel('Number of Workers')
-    plt.ylabel('Time (s)')
-    plt.xticks(x + width, [f'Serial' if w == 1 else str(w) for w in WORKER_COUNTS])
+    plt.title(f'Execution Time vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
+    plt.xlabel('Number of Workers', fontsize=12)
+    plt.ylabel('Time (s)', fontsize=12)
+    plt.xticks(WORKER_COUNTS)
     plt.legend()
-    plt.grid(axis='y', alpha=0.3)
+    plt.grid(alpha=0.3)
     plt.savefig(os.path.join(output_dir, "plot_time_vs_workers.png"), dpi=300)
     plt.close()
 
@@ -210,12 +208,12 @@ def generate_plots(IMAGE_COUNT, WORKER_COUNTS, avg_data, output_dir):
         workers_list = sorted(avg_data[method].keys())
         t_1 = avg_data[method][1]
         speedups = [t_1 / avg_data[method][w] for w in workers_list]
-        plt.plot(workers_list, speedups, marker='o', label=labels[method], color=colors[method])
+        plt.plot(workers_list, speedups, marker='o', label=labels[method], color=colors[method], linewidth=2)
     
-    plt.plot([1, max(WORKER_COUNTS)], [1, max(WORKER_COUNTS)], 'k--', label='Ideal Linear')
-    plt.title(f'Speedup vs Workers ({IMAGE_COUNT} Images)')
-    plt.xlabel('Number of Workers')
-    plt.ylabel('Speedup Factor')
+    plt.plot([1, max(WORKER_COUNTS)], [1, max(WORKER_COUNTS)], 'k--', label='Ideal Linear', alpha=0.6)
+    plt.title(f'Speedup vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
+    plt.xlabel('Number of Workers', fontsize=12)
+    plt.ylabel('Speedup Factor', fontsize=12)
     plt.legend()
     plt.grid(alpha=0.3)
     plt.xticks(WORKER_COUNTS)
@@ -224,22 +222,23 @@ def generate_plots(IMAGE_COUNT, WORKER_COUNTS, avg_data, output_dir):
 
     # PLOT 3: Efficiency
     plt.figure(figsize=(10, 6))
-    for idx, method in enumerate(['MP', 'CF_Proc', 'CF_Thread']):
+    for method in ['MP', 'CF_Proc', 'CF_Thread']:
         workers_list = sorted(avg_data[method].keys())
         t_1 = avg_data[method][1]
         effs = []
         for w in workers_list:
             speedup = t_1 / avg_data[method][w]
-            effs.append((speedup/w)*100 if w!=1 else 100.0)
-        plt.bar(x + idx*width, effs, width, label=labels[method], color=colors[method], alpha=0.8)
+            val = (speedup/w)*100 if w!=1 else 100.0
+            effs.append(val)
+        plt.plot(workers_list, effs, marker='o', label=labels[method], color=colors[method], linewidth=2)
 
-    plt.axhline(y=100, color='k', linestyle='--', label='Ideal')
-    plt.title(f'Efficiency vs Workers ({IMAGE_COUNT} Images)')
-    plt.xlabel('Number of Workers')
-    plt.ylabel('Efficiency (%)')
-    plt.xticks(x + width, [f'Serial' if w == 1 else str(w) for w in WORKER_COUNTS])
+    plt.axhline(y=100, color='k', linestyle='--', label='Ideal', alpha=0.6)
+    plt.title(f'Efficiency vs Workers ({IMAGE_COUNT} Images)', fontsize=14, fontweight='bold')
+    plt.xlabel('Number of Workers', fontsize=12)
+    plt.ylabel('Efficiency (%)', fontsize=12)
+    plt.xticks(WORKER_COUNTS)
     plt.legend()
-    plt.grid(axis='y', alpha=0.3)
+    plt.grid(alpha=0.3)
     plt.ylim(0, 120)
     plt.savefig(os.path.join(output_dir, "plot_efficiency.png"), dpi=300)
     plt.close()
