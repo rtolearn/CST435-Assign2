@@ -1,25 +1,36 @@
 """
-Image Count Saturation Tester
-Tests different image counts (up to 10,000) with 8 Workers.
-Generates a "Speedup vs Dataset Size" graph to identify the saturation point.
+Dataset Size Optimizer (Refined)
+Identifies the exact image count needed for stability.
+Includes Cool-down and Memory Cleanup to prevent false drops.
 """
 
 import time
 import csv
 import os
 import multiprocessing
-import numpy as np
+import gc  # <--- NEW: Garbage Collection
 import matplotlib.pyplot as plt
-from collections import defaultdict
 import utils
 import method_mp
 import method_cf
 
+# --- HELPER: ROBUST TIMER ---
 def measure_time(func, *args, **kwargs):
-    """Helper to measure execution time of a function."""
+    """
+    Measures execution time with system stabilization.
+    """
+    # 1. Cool Down: Let CPU sleep to reset burst credits/heat
+    time.sleep(2) 
+    
+    # 2. Cleanup: Force Python to clear old memory before starting
+    gc.collect()
+    
+    # 3. Measure
     start = time.time()
     func(*args, **kwargs)
-    return time.time() - start
+    end = time.time()
+    
+    return end - start
 
 def test_image_count(image_count, workers):
     """
@@ -27,27 +38,23 @@ def test_image_count(image_count, workers):
     """
     INPUT_DIR = "images"
     
-    # 1. Load images
-    print(f"  Loading {image_count} images...", end="", flush=True)
+    print(f"  Loading {image_count} paths...", end="", flush=True)
     all_image_paths = utils.get_image_paths(INPUT_DIR, limit=image_count)
     actual_count = len(all_image_paths)
     
     if actual_count < image_count:
         print(f" (Limited to {actual_count})")
     else:
-        print(" Done!")
+        print(" Done.")
 
-    # 2. Prepare Tasks
-    # We use a dummy output folder and DISABLE saving (False) to measure pure CPU performance
-    current_paths = all_image_paths[:actual_count]
-    tasks = [(p, "outputs_test", False) for p in current_paths]
+    # DISABLE SAVING (False) to test pure CPU Scalability
+    tasks = [(p, "outputs_test", False) for p in all_image_paths[:actual_count]]
     
     results = {}
     
-    # 3. Run Benchmarks
-    print(f"Running: ", end="", flush=True)
+    print(f"    Running: ", end="", flush=True)
     
-    # A. Sequential (1 Worker) - The Baseline
+    # A. Sequential (Baseline)
     print("Serial...", end="", flush=True)
     results['Sequential'] = measure_time(method_mp.run_multiprocessing, tasks, 1)
     
@@ -72,6 +79,7 @@ def main():
     print("=" * 70)
     
     # --- CONFIGURATION ---
+    # We test up to 8000. 10,000 might take too long for Serial.
     TARGET_COUNTS = [100, 500, 1000, 2000, 4000, 6000, 8000, 10000]
     WORKERS = 8  
     
@@ -81,12 +89,11 @@ def main():
     print("-" * 70)
     
     all_results = {}
-    max_images_reached = False
+    max_reached = False
     
     # --- TEST LOOP ---
     for target in TARGET_COUNTS:
-        if max_images_reached:
-            break
+        if max_reached: break
             
         print(f"\nTest Target: {target}")
         try:
@@ -94,14 +101,14 @@ def main():
             all_results[actual] = times
             
             if actual < target:
-                print(f"  ! Max dataset size reached ({actual}). Stopping further tests.")
-                max_images_reached = True
+                print(f"  ! Max dataset size reached ({actual}). Stopping.")
+                max_reached = True
                 
         except Exception as e:
             print(f"  ERROR: {e}")
             continue
 
-    # --- SAVE RAW DATA TO CSV ---
+    # --- SAVE DATA ---
     csv_path = "saturation_results.csv"
     with open(csv_path, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -109,80 +116,78 @@ def main():
         for count, times in all_results.items():
             for method, t in times.items():
                 writer.writerow([count, method, t])
-    print(f"\nSaved raw data to {csv_path}")
 
-    # --- PRINT SUMMARY TABLE ---
+    # --- PRINT SUMMARY ---
     print("\n" + "=" * 90)
     print(f"SUMMARY (Speedup based on MP vs Serial)")
     print("-" * 90)
-    print(f"{'Images':<10} | {'Serial (s)':<12} | {'MP (s)':<12} | {'MP Speedup':<12} | {'Status':<15}")
+    print(f"{'Images':<10} | {'Serial(s)':<10} | {'MP(s)':<10} | {'MP Speedup':<12} | {'Status':<15}")
     print("-" * 90)
     
     counts = sorted(all_results.keys())
-    previous_speedup = 0
+    prev_speedup = 0
     
+    # Logic to find the "Stability Point"
+    optimal_candidate = None
+
     for count in counts:
         t_serial = all_results[count]['Sequential']
         t_mp = all_results[count]['MP']
         
-        # Calculate Speedup Formula: Serial / Parallel
         speedup = t_serial / t_mp if t_mp > 0 else 0
-        
-        diff = abs(speedup - previous_speedup)
+        diff = speedup - prev_speedup
         
         if count == counts[0]:
             status = "Baseline"
-        elif diff < 0.05:
-            status = "SATURATED (Flat)"
-        elif speedup > previous_speedup:
-            status = "Improving"
+        elif abs(diff) < 0.2: # If change is less than 0.2x, it is stable
+            status = "STABLE"
+            if not optimal_candidate: optimal_candidate = count
+        elif speedup > prev_speedup:
+            status = "Rising"
         else:
-            status = "Regression"
+            status = "Dropping"
             
-        previous_speedup = speedup
-        print(f"{count:<10} | {t_serial:<12.4f} | {t_mp:<12.4f} | {speedup:<12.2f}x | {status:<15}")
+        prev_speedup = speedup
+        print(f"{count:<10} | {t_serial:<10.2f} | {t_mp:<10.2f} | {speedup:<12.2f}x | {status:<15}")
     
     print("-" * 90)
+    if optimal_candidate:
+        print(f"Recommendation: Use {optimal_candidate} images for future tests.")
+    else:
+        print(f"Recommendation: Use the highest number available ({counts[-1]}).")
 
-    # --- GENERATE SPEEDUP PLOT ---
-    print("\nGenerating Speedup Plot...")
-    plt.figure(figsize=(12, 7))
+    # --- PLOT ---
+    generate_plot(all_results, WORKERS)
+
+def generate_plot(all_results, workers):
+    print("\nGenerating Plot...")
+    plt.figure(figsize=(10, 6))
     
-    # We only plot the parallel methods (Speedup relative to Serial)
-    parallel_methods = ['MP', 'CF_Proc', 'CF_Thread']
+    methods = ['MP', 'CF_Proc', 'CF_Thread']
     colors = {'MP': 'blue', 'CF_Proc': 'orange', 'CF_Thread': 'green'}
-    markers = {'MP': '^', 'CF_Proc': 's', 'CF_Thread': 'D'}
     
     x_vals = sorted(all_results.keys())
     
-    for method in parallel_methods:
-        # Calculate Speedup list for this method
-        # Speedup = Serial_Time / Method_Time
-        y_speedups = []
+    for method in methods:
+        y_vals = []
         for count in x_vals:
             t_serial = all_results[count]['Sequential']
             t_parallel = all_results[count][method]
-            val = t_serial / t_parallel if t_parallel > 0 else 0
-            y_speedups.append(val)
+            speedup = t_serial / t_parallel if t_parallel > 0 else 0
+            y_vals.append(speedup)
             
-        plt.plot(x_vals, y_speedups, marker=markers[method], label=method, color=colors[method], linewidth=2.5)
+        plt.plot(x_vals, y_vals, marker='o', label=method, color=colors[method])
 
-    # Plot Ideal Line (y = Workers)? No, usually too high.
-    # Let's plot the "Serial Baseline" at y=1 for reference
-    plt.axhline(y=1, color='red', linestyle='--', label='Serial Baseline (1.0x)', alpha=0.7)
-
-    plt.title(f'Speedup Ratio vs Dataset Size ({WORKERS} Workers)', fontsize=14, fontweight='bold')
-    plt.xlabel('Number of Images (Dataset Size)', fontsize=12)
-    plt.ylabel('Speedup Factor (Higher is Better)', fontsize=12)
+    plt.axhline(y=1, color='red', linestyle='--', label='Serial (1.0x)')
+    plt.title(f'Speedup vs Dataset Size ({workers} Workers)')
+    plt.xlabel('Dataset Size (Images)')
+    plt.ylabel('Speedup Factor')
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    # Save
     os.makedirs("plots", exist_ok=True)
-    plot_path = "plots/plot_saturation_speedup.png"
-    plt.savefig(plot_path, dpi=300)
-    print(f"✓ Speedup Graph saved to {plot_path}")
-    print("=" * 90)
+    plt.savefig("plots/plot_saturation_speedup.png")
+    print("✓ Saved to plots/plot_saturation_speedup.png")
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()

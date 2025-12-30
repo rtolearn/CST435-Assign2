@@ -62,8 +62,6 @@ def save_image(image, output_path):
         print(f"Error saving to {output_path}: {e}")
         return False
 
-# --- FILTERS SECTION ---
-
 def apply_grayscale(image):
     """Filter 1: Grayscale Conversion"""
     if len(image.shape) == 2:
