@@ -80,7 +80,7 @@ def main():
     
     # --- CONFIGURATION ---
     # We test up to 8000. 10,000 might take too long for Serial.
-    TARGET_COUNTS = [100, 500, 1000, 2000, 4000, 6000, 8000]
+    TARGET_COUNTS = [100, 500, 1000, 2000, 4000, 6000, 8000, 10000]
     WORKERS = 8  
     
     print(f"Configuration:")
