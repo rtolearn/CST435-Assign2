@@ -1,102 +1,140 @@
-# CST435 Assignment 2: Parallel Image Processing System
+# Parallel Image Processing System
 
-**Course**: CST435: Parallel and Cloud Computing  
-**Assignment**: Assignment 2 - Parallel Image Processing on Google Cloud
-Platform (GCP)
+**Course**: CST435 - Parallel and Cloud Computing  
+**Assignment**: Assignment 2 - Parallel Image Processing on GCP
 
 ---
 
 ## 1. Project Overview
+This project implements a high-performance image processing pipeline designed to benchmark and analyze parallel computing paradigms. It leverages the **Food-101** dataset to simulate a large-scale computational workload, applying a series of computationally intensive filters (Gaussian Blur, HSV Brightness, Sharpening, Grayscale, and Sobel Edge Detection) to thousands of images.
 
-This project implements a high-performance parallel image processing system
-capable of filtering thousands of images efficiently. The primary goal is to
-compare different parallel paradigms in Python to understand how they handle
-CPU-bound tasks and the Global Interpreter Lock (GIL).
-
-### Key Features:
-
-- **Parallel Paradigms**: Compares `Multiprocessing` (Process-based) vs.
-  `Concurrent Futures` (Process & Thread-based).
-- **Intensive Pipeline**: Includes a custom-built Python blur to simulate high
-  CPU load.
-- **Automated Benchmarking**: Measures execution time, speedup, and efficiency
-  across varying worker counts.
-- **Cloud Ready**: Optimized for deployment on Google Cloud Platform (GCP)
-  Compute Engine.
+The core objective is to evaluate the scalability and efficiency of **Multiprocessing (IPC-based)** versus **Concurrent Futures (Thread/Process-based)** architectures. The system provides a unified CLI for execution, automated benchmarking, and visual performance analytics (Speedup, Efficiency, and Throughput graphs), making it suitable for deployment on high-core cloud infrastructure like **Google Cloud Platform (GCP)**.
 
 ---
 
-## 2. Project Structure
+## 2. Code Organization
+
+The project is structured into modular components to ensure separation of concerns between control logic, processing implementation, and analysis tools.
 
 ```text
-.
-├── images/               # Input image folders (imageFolder 1, 2, 3)
-├── output/               # Processed images and benchmark results
-├── plots/                # Generated performance visualizations
-├── find_optimal_image_count.py  # Utility to test scaling limits
-├── main.py               # Main entry point for benchmarking
-├── method_cf.py          # Concurrent Futures implementation
-├── method_mp.py          # Multiprocessing implementation
-├── utils.py              # Image processing filter pipeline
-└── requirements.txt      # Project dependencies
+CST435-Assign2/
+├── images/                      # Raw input dataset (hierarchical structure)
+├── output/                      # Artifacts and results
+│   ├── benchmark/               # Generated performance plots
+│   │   ├── plot_efficiency.png
+│   │   ├── plot_speedup.png
+│   │   └── plot_time_vs_workers.png
+│   ├── mp/                      # Output images from Multiprocessing
+│   ├── cf_proc/                 # Output images from CF (Process)
+│   └── cf_thread/               # Output images from CF (Thread)
+├── main.py                      # CLI Controller & Orchestrator
+├── benchmark.py                 # Automated Benchmark Suite
+├── utils.py                     # Core Processing Library (Filters & I/O)
+├── method_mp.py                 # Multiprocessing Implementation
+├── method_cf.py                 # Concurrent Futures Implementation
+├── find_optimal_image_count.py  # Load Stress Testing Tool
+├── requirements.txt             # Dependency Definitions
+└── README.md                    # Project Documentation
 ```
 
-## 3. Filter Pipeline Details
+---
 
-Every image goes through a 6-stage sequence. This pipeline is designed to be
-computationally expensive to test parallel efficiency:
+## 3. Quick Start
 
-1.  **Custom Python Blur**: A pure Python loop implementation. This is
-    intentionally slow to demonstrate the **Global Interpreter Lock (GIL)**
-    bottleneck in threads.
-2.  **Brightness**: +60 Value (HSV space).
-3.  **Gaussian Blur**: 3x3 Kernel (Noise reduction).
-4.  **Sharpening**: High-pass filter (Edge enhancement).
-5.  **Grayscale**: Luminance conversion.
-6.  **Sobel Edge Detection**: Gradient calculation.
+### Prerequisites
+*   Python 3.8+
+*   Virtual Environment (Recommended)
+
+### Installation
+```bash
+# 1. Create and activate venv
+python -m venv venv
+./venv/Scripts/Activate.ps1  # Windows PowerShell
+
+# 2. Install dependencies
+pip install -r requirements.txt
+```
+
+### Usage
+Run the processor via the centralized `main.py` controller:
+
+```bash
+# Basic Run: Process 50 images with 4 workers using Multiprocessing
+python main.py --count 50 --workers 4 --save
+
+# Full Benchmark: Test 1, 2, 4, 8 workers on 500 images (3 runs each for averaging)
+python main.py --count 500 --runs 3 --save
+```
+
+---
 
 ## 4. Google Cloud Platform (GCP) Instructions
 
-### 1. Install system tools and dependencies
+To deploy and benchmark this system on a GCP Compute Engine instance (e.g., e2-standard-8), follow these steps:
 
-sudo apt update && sudo apt install -y git python3-pip unzip sudo apt-get
-install -y python3-matplotlib python3-numpy libgl1 libglib2.0-0
+### 4.1. VM Setup
+1.  **Create Instance**:
+    *   **Machine Type**: `e2-standard-8` (8 vCPUs, 32 GB memory).
+    *   **OS**: Ubuntu 20.04 LTS (recommended for Python multiprocessing).
+    *   **Disk**: 20 GB+ SSD.
+2.  **SSH Connection**: Connect to your instance via the Gcloud Console or terminal.
 
-### 2. Clone the repository
+### 4.2. Environment Configuration
+Update the system and install necessary libraries:
 
-git clone https://github.com/rtolearn/CST435-Assign2.git cd CST435-Assign2
+```bash
+# Update package list
+sudo apt-get update
+sudo apt-get upgrade -y
 
-### 3. Install Python packages
+# Install Python & Pip
+sudo apt-get install python3-pip python3-venv git htop -y
 
-pip3 install -r requirements.txt --break-system-packages
+# Install core system dependencies for OpenCV (headless)
+sudo apt-get install libgl1-mesa-glx libglib2.0-0 -y
+```
 
-### 4. Import and Unzip Images
+### 4.3. Project Deployment
+```bash
+# Clone the repository
+git clone https://github.com/rtolearn/CST435-Assign2.git
+cd CST435-Assign2
 
-mkdir -p images
+# Create Virtual Environment
+python3 -m venv venv
+source venv/bin/activate
 
-### (Upload images.zip to your VM home directory first)
+# Install Python Requirements
+pip install -r requirements.txt
+```
 
-mv ~/images.zip ~/CST435-Assign2/images/ cd images unzip images.zip cd ..
+### 4.4. Running the Benchmark
+Execute the benchmark suite to generate performance data. This script will utilize all 8 vCPUs.
 
-## 5. Run the command in GCP
+```bash
+# Run the benchmark (ensure you are inside the venv)
+python main.py --count 5000 --runs 3 --save
+```
+*Note: Depending on the dataset size, this may take several minutes.*
 
-### 1. Find optimal number of images:
+### 4.5. Result Preview Paths
+After the benchmark completes, the results and plots will be available at the following paths:
 
-python3 find_optimal_image_count.py
+*   **Performance Plots**:
+    *   `output/benchmark/plot_time_vs_workers.png`
+    *   `output/benchmark/plot_speedup.png`
+    *   `output/benchmark/plot_efficiency.png`
+*   **Processed Images (if --save enabled)**:
+    *   `output/mp/images/`
+    *   `output/cf_proc/images/`
+    *   `output/cf_thread/images/`
 
-#### File path of result for preview
+---
 
-plots/plot_saturation_speedup.png saturation.csv
-
-### 2. Run code (Save mode)
-
-python3 main.py --count 10 --workers 1 2 4 8 --runs 3 --multi-run --save
-
-### 3. Run code (Without Save mode)
-
-python3 main.py --count 10 --workers 1 2 4 8 --runs 3 --multi-run
-
-#### File path of result for preview
-
-plots/plot_saturation_speedup.png output/benchmark/plot_time_vs_workers.png
-output/benchmark/plot_speedup.png output/benchmark/plot_efficiency.png
+## 5. Filter Pipeline Details
+The application applies a computationally intensive sequence of operations to every image:
+1.  **Gaussian Blur**: 3x3 Kernel noise reduction.
+2.  **Brightness Adjustment**: HSV Value channel modification (+60).
+3.  **Sharpening**: Convolution with high-pass kernel.
+4.  **Grayscale**: RGB to Single-channel conversion.
+5.  **Sobel Edge Detection**: Gradient magnitude calculation (X+Y).
