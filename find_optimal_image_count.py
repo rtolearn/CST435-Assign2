@@ -151,10 +151,6 @@ def main():
         print(f"{count:<10} | {t_serial:<10.2f} | {t_mp:<10.2f} | {speedup:<12.2f}x | {status:<15}")
     
     print("-" * 90)
-    if optimal_candidate:
-        print(f"Recommendation: Use {optimal_candidate} images for future tests.")
-    else:
-        print(f"Recommendation: Use the highest number available ({counts[-1]}).")
 
     # --- PLOT ---
     generate_plot(all_results, WORKERS)

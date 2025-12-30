@@ -59,8 +59,7 @@ computationally expensive to test parallel efficiency:
 
 ### 1. Install system tools and dependencies
 
-sudo apt update && sudo apt install -y git python3-pip unzip sudo apt-get
-install -y python3-matplotlib python3-numpy libgl1 libglib2.0-0
+sudo apt update && sudo apt install -y git python3-pip unzip sudo apt-get install -y python3-matplotlib python3-numpy libgl1 libglib2.0-0
 
 ### 2. Clone the repository
 
@@ -76,7 +75,11 @@ mkdir -p images
 
 ### (Upload images.zip to your VM home directory first)
 
-mv ~/images.zip ~/CST435-Assign2/images/ cd images unzip images.zip cd ..
+mv '*.zip' ~/CST435-Assign2/images/ 
+
+mv .zip CST435-Assign2/images/ && cd CST435-Assign2/images/ && unzip ".zip"
+
+cd images unzip images.zip cd ..
 
 ## 5. Run the command in GCP
 
@@ -90,7 +93,7 @@ plots/plot_saturation_speedup.png saturation.csv
 
 ### 2. Run code (Save mode)
 
-python3 main.py --count 10 --workers 1 2 4 8 --runs 3 --multi-run --save
+python3 main.py --count 4000 --workers 1 2 4 8 --runs 3 --multi-run --save
 
 ### 3. Run code (Without Save mode)
 
