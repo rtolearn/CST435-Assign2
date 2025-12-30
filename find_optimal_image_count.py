@@ -45,7 +45,7 @@ def test_image_count(image_count, workers):
     results = {}
     
     # 3. Run Benchmarks
-    print(f"    Running: ", end="", flush=True)
+    print(f"Running: ", end="", flush=True)
     
     # A. Sequential (1 Worker) - The Baseline
     print("Serial...", end="", flush=True)

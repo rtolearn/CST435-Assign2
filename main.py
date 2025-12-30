@@ -117,7 +117,6 @@ def run_benchmark_suite(IMAGE_COUNT, WORKER_COUNTS, RUNS_PER_CONFIG, GENERATE_PL
     if GENERATE_PLOTS:
         generate_plots(IMAGE_COUNT, WORKER_COUNTS, avg_data, plot_output_dir)
 
-
 def save_and_print_results(WORKER_COUNTS, RUNS_PER_CONFIG, raw_results, avg_data, methods):
     COL_WIDTH = 12
     print("\n" + "=" * 65)
@@ -180,7 +179,6 @@ def save_and_print_results(WORKER_COUNTS, RUNS_PER_CONFIG, raw_results, avg_data
         
         print(f"{'Best:':<8}{best_method}")
         print("-" * 50)
-
 
 def generate_plots(IMAGE_COUNT, WORKER_COUNTS, avg_data, output_dir):
     print(f"\nGenerating 3 Analysis Plots in '{output_dir}/'...")
