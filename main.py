@@ -246,6 +246,13 @@ def generate_plots(IMAGE_COUNT, WORKER_COUNTS, avg_data, output_dir):
     print("Plots saved successfully.")
 
 def parse_arguments():
+    """
+    Command-Line Interface: Configures runtime parameters.
+    
+    Responsibilities:
+    1. Parameterization: Allows customization of image count, worker counts, and run iterations.
+    2. Feature Toggles: Handles flags for saving output images and generating visual reports.
+    """
     parser = argparse.ArgumentParser(description='Parallel Image Processing Benchmark')
     
     parser.add_argument('--count', type=int, default=50, help='Number of images')
