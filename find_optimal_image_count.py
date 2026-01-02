@@ -1,31 +1,31 @@
 """
-Dataset Size Optimizer (Refined)
+Dataset Size Optimizer (Clean Headers)
 Identifies the exact image count needed for stability.
-Includes Cool-down and Memory Cleanup to prevent false drops.
+Saves all reports and plots to the 'outputs/' folder.
 """
 
 import time
 import csv
 import os
 import multiprocessing
-import gc  # <--- NEW: Garbage Collection
+import gc
 import matplotlib.pyplot as plt
 import utils
 import method_mp
 import method_cf
+
+# --- CONFIGURATION: OUTPUT DIRECTORY ---
+OUTPUT_DIR = "output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- HELPER: ROBUST TIMER ---
 def measure_time(func, *args, **kwargs):
     """
     Measures execution time with system stabilization.
     """
-    # 1. Cool Down: Let CPU sleep to reset burst credits/heat
-    time.sleep(2) 
+    time.sleep(1) # Short cool down
+    gc.collect()  # Force cleanup
     
-    # 2. Cleanup: Force Python to clear old memory before starting
-    gc.collect()
-    
-    # 3. Measure
     start = time.time()
     func(*args, **kwargs)
     end = time.time()
@@ -37,56 +37,70 @@ def test_image_count(image_count, workers):
     Test a specific image count with all 3 parallel methods + Serial.
     """
     INPUT_DIR = "images"
+    # Update: Put generated images in outputs folder (even if saving is False)
+    IMG_OUT_DIR = os.path.join(OUTPUT_DIR, "test_images")
     
-    print(f"  Loading {image_count} paths...", end="", flush=True)
+    # 1. Load Data
+    print(f"\n[ Dataset: {image_count} Images ] Loading...", end="", flush=True)
     all_image_paths = utils.get_image_paths(INPUT_DIR, limit=image_count)
     actual_count = len(all_image_paths)
-    
-    if actual_count < image_count:
-        print(f" (Limited to {actual_count})")
-    else:
-        print(" Done.")
+    print(f" Loaded {actual_count}.")
 
-    # DISABLE SAVING (False) to test pure CPU Scalability
-    tasks = [(p, "outputs_test", False) for p in all_image_paths[:actual_count]]
-    
+    # Tasks (Saving Disabled for pure CPU testing)
+    tasks = [(p, IMG_OUT_DIR, False) for p in all_image_paths[:actual_count]]
     results = {}
     
-    print(f"    Running: ", end="", flush=True)
+    # 2. Run Tests
+    print(f"  Running: Serial...", end="", flush=True)
+    results['Serial'] = measure_time(method_mp.run_multiprocessing, tasks, 1)
     
-    # A. Sequential (Baseline)
-    print("Serial...", end="", flush=True)
-    results['Sequential'] = measure_time(method_mp.run_multiprocessing, tasks, 1)
-    
-    # B. Multiprocessing
-    print(f" MP({workers})...", end="", flush=True)
+    print(f" | MP...", end="", flush=True)
     results['MP'] = measure_time(method_mp.run_multiprocessing, tasks, workers)
     
-    # C. CF Process
-    print(f" CF_Proc({workers})...", end="", flush=True)
+    print(f" | CF_Proc...", end="", flush=True)
     results['CF_Proc'] = measure_time(method_cf.run, tasks, workers, mode='process')
     
-    # D. CF Thread
-    print(f" CF_Thread({workers})...", end="", flush=True)
+    print(f" | CF_Thread...", end="", flush=True)
     results['CF_Thread'] = measure_time(method_cf.run, tasks, workers, mode='thread')
     
     print(" Done.")
     return actual_count, results
 
-def main():
-    print("=" * 70)
-    print("SATURATION TEST: Finding the Optimal Dataset Size")
-    print("=" * 70)
+def print_batch_analysis(count, results, workers):
+    """
+    Prints a detailed table for the specific batch just run.
+    """
+    t_serial = results['Serial']
     
+    print("-" * 65)
+    print(f"{'Method':<15} | {'Time (s)':<10} | {'Speedup':<10} | {'Efficiency':<10}")
+    print("-" * 65)
+    
+    # Print Serial First
+    print(f"{'Serial (1 Core)':<15} | {t_serial:<10.4f} | {'1.00x':<10} | {'100%':<10}")
+    
+    # Print Parallel Methods
+    for method in ['MP', 'CF_Proc', 'CF_Thread']:
+        t_curr = results[method]
+        
+        # Calculate Speedup (Serial / Parallel)
+        speedup = t_serial / t_curr if t_curr > 0 else 0
+        
+        # Calculate Efficiency (Speedup / Workers)
+        efficiency = (speedup / workers) * 100
+        
+        print(f"{method:<15} | {t_curr:<10.4f} | {speedup:<9.2f}x | {efficiency:<9.1f}%")
+    print("-" * 65)
+
+def main():
     # --- CONFIGURATION ---
-    # We test up to 8000. 10,000 might take too long for Serial.
     TARGET_COUNTS = [100, 500, 1000, 2000, 4000, 6000, 8000, 10000]
     WORKERS = 8  
     
-    print(f"Configuration:")
-    print(f"  Targets: {TARGET_COUNTS}")
-    print(f"  Workers: {WORKERS}")
-    print("-" * 70)
+    print("=" * 70)
+    print(f"SATURATION TEST: Optimizing for {WORKERS} Cores")
+    print(f"Output Directory: {os.path.abspath(OUTPUT_DIR)}")
+    print("=" * 70)
     
     all_results = {}
     max_reached = False
@@ -95,68 +109,69 @@ def main():
     for target in TARGET_COUNTS:
         if max_reached: break
             
-        print(f"\nTest Target: {target}")
         try:
+            # 1. Run Test
             actual, times = test_image_count(target, WORKERS)
             all_results[actual] = times
             
+            # 2. Print Immediate Detailed Analysis
+            print_batch_analysis(actual, times, WORKERS)
+            
             if actual < target:
-                print(f"  ! Max dataset size reached ({actual}). Stopping.")
+                print(f"  ! Max dataset size reached ({actual}). Stopping loop.")
                 max_reached = True
                 
         except Exception as e:
             print(f"  ERROR: {e}")
             continue
 
-    # --- SAVE DATA ---
-    csv_path = "saturation_results.csv"
-    with open(csv_path, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['Image_Count', 'Method', 'Time_Seconds'])
-        for count, times in all_results.items():
-            for method, t in times.items():
-                writer.writerow([count, method, t])
+    # --- SAVE CSV ---
+    csv_path = os.path.join(OUTPUT_DIR, "saturation_results.csv")
+    try:
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Image_Count', 'Method', 'Time', 'Speedup', 'Efficiency'])
+            for count, times in all_results.items():
+                t_serial = times['Serial']
+                for method, t in times.items():
+                    speedup = t_serial / t if t > 0 else 0
+                    eff = (speedup / WORKERS) if method != 'Serial' else 1.0
+                    writer.writerow([count, method, t, speedup, eff])
+        print(f"\n[Saved] Data saved to {csv_path}")
+    except Exception as e:
+        print(f"Could not save CSV: {e}")
 
-    # --- PRINT SUMMARY ---
-    print("\n" + "=" * 90)
-    print(f"SUMMARY (Speedup based on MP vs Serial)")
-    print("-" * 90)
-    print(f"{'Images':<10} | {'Serial(s)':<10} | {'MP(s)':<10} | {'MP Speedup':<12} | {'Status':<15}")
-    print("-" * 90)
+    # --- FINAL EXECUTIVE SUMMARY ---
+    print("\n" + "=" * 85)
+    print(f"EXECUTIVE SUMMARY: Speedup Matrix")
+    print("-" * 85)
     
-    counts = sorted(all_results.keys())
-    prev_speedup = 0
+    # UPDATED HEADER: Removed (s) and (x)
+    print(f"{'Images':<8} | {'Serial':<10} || {'MP':<10} | {'CF_P':<10} | {'CF_T':<10} || {'Winner':<10}")
+    print("-" * 85)
     
-    # Logic to find the "Stability Point"
-    optimal_candidate = None
-
-    for count in counts:
-        t_serial = all_results[count]['Sequential']
-        t_mp = all_results[count]['MP']
+    for count in sorted(all_results.keys()):
+        res = all_results[count]
+        t_serial = res['Serial']
         
-        speedup = t_serial / t_mp if t_mp > 0 else 0
-        diff = speedup - prev_speedup
+        # Calculate Speedups
+        s_mp = t_serial / res['MP'] if res['MP'] > 0 else 0
+        s_cf_p = t_serial / res['CF_Proc'] if res['CF_Proc'] > 0 else 0
+        s_cf_t = t_serial / res['CF_Thread'] if res['CF_Thread'] > 0 else 0
         
-        if count == counts[0]:
-            status = "Baseline"
-        elif abs(diff) < 0.2: # If change is less than 0.2x, it is stable
-            status = "STABLE"
-            if not optimal_candidate: optimal_candidate = count
-        elif speedup > prev_speedup:
-            status = "Rising"
-        else:
-            status = "Dropping"
-            
-        prev_speedup = speedup
-        print(f"{count:<10} | {t_serial:<10.2f} | {t_mp:<10.2f} | {speedup:<12.2f}x | {status:<15}")
+        # Find Winner
+        best_val = max(s_mp, s_cf_p, s_cf_t)
+        if best_val == s_mp: winner = "MP"
+        elif best_val == s_cf_p: winner = "CF_Proc"
+        else: winner = "CF_Thread"
+        
+        print(f"{count:<8} | {t_serial:<10.2f} || {s_mp:<10.2f} | {s_cf_p:<10.2f} | {s_cf_t:<10.2f} || {winner:<10}")
     
-    print("-" * 90)
-
-    # --- PLOT ---
+    print("-" * 85)
     generate_plot(all_results, WORKERS)
 
 def generate_plot(all_results, workers):
-    print("\nGenerating Plot...")
+    print("Generating Plot...")
     plt.figure(figsize=(10, 6))
     
     methods = ['MP', 'CF_Proc', 'CF_Thread']
@@ -167,7 +182,7 @@ def generate_plot(all_results, workers):
     for method in methods:
         y_vals = []
         for count in x_vals:
-            t_serial = all_results[count]['Sequential']
+            t_serial = all_results[count]['Sequential'] if 'Sequential' in all_results[count] else all_results[count]['Serial']
             t_parallel = all_results[count][method]
             speedup = t_serial / t_parallel if t_parallel > 0 else 0
             y_vals.append(speedup)
@@ -175,15 +190,18 @@ def generate_plot(all_results, workers):
         plt.plot(x_vals, y_vals, marker='o', label=method, color=colors[method])
 
     plt.axhline(y=1, color='red', linestyle='--', label='Serial (1.0x)')
-    plt.title(f'Speedup vs Dataset Size ({workers} Workers)')
+    plt.axhline(y=workers, color='gray', linestyle=':', label=f'Ideal ({workers}x)')
+    
+    plt.title(f'Method Comparison: Speedup vs Dataset Size ({workers} Workers)')
     plt.xlabel('Dataset Size (Images)')
     plt.ylabel('Speedup Factor')
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    os.makedirs("plots", exist_ok=True)
-    plt.savefig("plots/plot_saturation_speedup.png")
-    print("✓ Saved to plots/plot_saturation_speedup.png")
+    # Save to Outputs folder
+    save_path = os.path.join(OUTPUT_DIR, "saturation_summary.png")
+    plt.savefig(save_path)
+    print(f"✓ Plot saved to {save_path}")
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
