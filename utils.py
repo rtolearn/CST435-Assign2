@@ -30,6 +30,7 @@ def get_image_paths(source_dir, limit=None):
         # print(f"Found {len(scan_dirs)} food classes, loading images...")
 
     count = 0
+    #Scans the directory (and subfolders) to collect image paths up to a specified limit.
     for folder in scan_dirs:
         for entry in os.scandir(folder):
             if entry.is_file() and entry.name.lower().endswith(valid_extensions):
