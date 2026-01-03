@@ -154,8 +154,8 @@ def save_and_print_results(WORKER_COUNTS, RUNS_PER_CONFIG, raw_results, avg_data
         # Speedup
         speedup_row = f"{'Speedup':<8}"
         for method in methods:
-            t1 = avg_data[method][1]
-            tn = avg_data[method][workers]
+            t1 = avg_data[method][1] # Serial
+            tn = avg_data[method][workers] # Parallel
             speedup = (t1 / tn) if workers != 1 else 1.0
             speedup_row += f"{speedup:<{COL_WIDTH}.4f}"
         print(speedup_row)
@@ -163,8 +163,8 @@ def save_and_print_results(WORKER_COUNTS, RUNS_PER_CONFIG, raw_results, avg_data
         # Efficiency
         eff_row = f"{'Eff(%)':<8}"
         for method in methods:
-            t1 = avg_data[method][1]
-            tn = avg_data[method][workers]
+            t1 = avg_data[method][1] # Serial
+            tn = avg_data[method][workers] # Parallel
             speedup = (t1 / tn) if workers != 1 else 1.0
             efficiency = (speedup / workers) * 100 if workers != 1 else 100.0
             eff_row += f"{efficiency:<{COL_WIDTH}.2f}"
